@@ -1,14 +1,7 @@
-#Shortest Path to Union Domains (SPUD)
-
 """
-Adam's Notes
-------------
-Parameters to delete:
-If we can show that mean does always better than abs, we can combine the OD_method and the similarity_measures, and greatly simplify the parameterization.
+Shortest Path to Union Domains (SPUD)
 
-Tasks: Go through code and check where we want to make things triangular, and where to test their speeds in computing. 
-3. Do I need the check for symmetric? IT always will be, unless given a precomputed data... ? No it will always be
-5. Make the use-kernals thing automatic?
+A class that learns the inter-geodesic distances between manifolds. Similar to MASH. 
 """
 
 #Install the libraries
@@ -21,14 +14,14 @@ from sklearn.manifold import MDS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
 from triangular_helper import *
 
-#Not necessary libraries for the minimal function
+#Additional Libraries to support plotting and verbose levels
 from time import time
 import seaborn as sns
 
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
                OD_method = "default", agg_method = "log", IDC = 1, #TODO: See if its possible to get rid of either OD_method or similarity Measure
-               similarity_measure = "default", #Maybe name this method and then have Jaccard, NAMA, and SPUD be seperate choosable methods
+               overide_method = "default", #Maybe name this method and then have Jaccard, NAMA, and SPUD be seperate choosable methods
                float_precision = np.float32, verbose = 0, **kwargs):
         '''
         Creates a class object. 
@@ -49,7 +42,7 @@ class SPUD:
 
           :OD_method: stands for Off-diagonal method. Can be the strings "abs", "mean" or "default". "Abs" calculates the absolute distances between the
             shortest paths to the same anchor, where as default calculates the shortest paths by traveling through an anchor. "Mean" calculates the average distance
-            by going through each anchor.
+            by going through each anchor. Default usually outpreforms both "abs" and "mean".
 
           :agg_method: States the method of how we want to adjust the off-diagonal blocks in the alignment. 
             It can be 'sqrt', 'log', any float, or 'None'.
@@ -63,7 +56,7 @@ class SPUD:
             representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
             deemed too strong, the user may choose to assign the IDC < 1.
 
-          :similarity_measure: Can be default, NAMA,  or Jaccard. Default uses the alpha decaying kernal to determine distances between nodes. Jaccard applies the jaccard similarity
+          :overide_method: Defaults to None. It can be NAMA, similarities, or Jaccard. Default uses the alpha decaying kernal to determine distances between nodes. Jaccard applies the jaccard similarity
             to the resulting graph. NAMA uses the original distances from the Pdist function. We recommend using NAMA for data that is very large. 
             
           :verbose: can be any float or integer. Determines what is printed as output as the function runs.
@@ -80,11 +73,18 @@ class SPUD:
         self.kwargs = kwargs
         self.IDC = IDC
         self.OD_method = OD_method.lower()
-        self.similarity_measure = similarity_measure.lower()
+        self.overide_method = overide_method.lower()
         self.float_precision = float_precision
 
         #Set self.emb to be None
         self.emb = None
+
+        #Adjust the values to work together
+        if self.overide_method != "none" and self.OD_method == "default":
+          if self.verbose > 0:
+             print(f"Setting the off-diagonal method (OD_method) to 'mean' to be compatible with {self.overide_method} method.")
+          
+          self.OD_method = "mean"
 
   def fit(self, dataA, dataB, known_anchors):
         '''
@@ -119,8 +119,8 @@ class SPUD:
         if np.max(self.known_anchors[:, 0]) > self.len_A or  np.max(self.known_anchors[:, 1]) > self.len_B:
            raise RuntimeWarning("Warning: Check you known anchors. Anchors given exceed vertices in data.")
 
-        #If these parameters are true, we can skip this all:
-        if self.OD_method != "default"  and self.similarity_measure == "nama":
+        #If these parameters are true, we can skip the graph creation
+        if self.overide_method == "nama":
            if self.verbose > 0:
               print("Skipping graph creating. Performing nearest anchor manifold alignment (NAMA) instead of SPUD.")
 
@@ -139,13 +139,10 @@ class SPUD:
 
         #Merge the graphs
         if self.OD_method == "default":
-          if self.verbose > 0 and self.len_A > 1000:
-             print("  --> Warning: Computing off-diagonal blocks will be exspensive. Consider setting OD_method to 'mean' or 'abs' for faster computation time.")
 
-          if self.similarity_measure != "default" and self.verbose > 0:
-             print("Will not be using the similarity measure. It only applies when OD_method does not equal 'default'.")
+          if self.verbose > 0 and self.len_A > 1500:
+             raise ResourceWarning("Computing off-diagonal blocks will be exspensive. Consider setting OD_method to 'mean' or 'abs' for faster computation time.")
              
-
           self.print_time()
           self.graphAB = self.merge_graphs()
           self.print_time("Time it took to execute merge_graphs function:  ")
@@ -356,7 +353,6 @@ class SPUD:
 
       return FOSCTTM_score, CE_score
 
-
   """<><><><><><><><><><><><><><><><><><><><>     PRIMARY FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
   def merge_graphs(self):
         """
@@ -384,21 +380,21 @@ class SPUD:
        print(f"Preforming {self.OD_method} calculations.\n")
 
     #Set the matrix domains to equal the jaccard similarity
-    if self.similarity_measure == "jaccard":
+    if self.overide_method == "jaccard":
        matrixA = 1 - get_triangular(np.array(self.graphA.similarity_jaccard(pairs=None), dtype = self.float_precision))
        matrixB = 1 -  get_triangular(np.array(self.graphB.similarity_jaccard(pairs=None), dtype = self.float_precision))
     
     #Set the matrix domains to equal the distances via shortest paths
-    elif self.similarity_measure == "distances" or self.similarity_measure == "default":
+    elif self.overide_method == "distances" or self.overide_method == "none":
        matrixA = get_triangular(self.normalize_0_to_1(np.array(self.graphA.distances(weights = "weight"), dtype = self.float_precision)))
        matrixB = get_triangular(self.normalize_0_to_1(np.array(self.graphB.distances(weights = "weight"), dtype = self.float_precision)))
   
     #Just use the pure distance measure
-    elif self.similarity_measure == "nama":
+    elif self.overide_method == "nama":
       matrixA = self.distsA
       matrixB = self.distsB
 
-    elif self.similarity_measure == "kernals":
+    elif self.overide_method == "similarities":
       matrixA = 1 - self.kernalsA
       matrixB = 1 - self.kernalsB
 
@@ -407,7 +403,7 @@ class SPUD:
       self.distsB = matrixB
 
     else: 
-      raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (default), 'nama', 'kernals', or 'jaccard'")
+      raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (or none), 'nama', 'similarities', or 'jaccard'")
 
     #Perform the absolute value method
     if self.OD_method == "abs":
