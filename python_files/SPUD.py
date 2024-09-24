@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import igraph as ig
 from sklearn.manifold import MDS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
-from Triangular import *
+from triangular_helper import *
 
 #Not necessary libraries for the minimal function
 from time import time
