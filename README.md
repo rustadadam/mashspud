@@ -4,7 +4,7 @@
 This repository contains two methods to solve manifold alignment methods. The first is called Shortest Paths on the Union of Domains, or SPUD. The second is Manifold Alignmnet via Stochastic Hopping. You can learn more about these methods by reading the paper found here: [PAPER link]. 
 
 ## Authors
-Rhodes, Jake
-Rustad, Adam
+- Rhodes, Jake
+- Rustad, Adam
 
 Created Sept, 2024
