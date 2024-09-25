@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: SPUD_and_MASH
+Version: 0.1
+Summary: Manifold Alignment Methods
+Home-page: https://github.com/rustadadam/SPUD_and_MASH.git
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: MIT License
+License-File: LICENSE

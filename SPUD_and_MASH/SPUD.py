@@ -2,6 +2,8 @@
 Shortest Path to Union Domains (SPUD)
 
 A class that learns the inter-geodesic distances between manifolds. Similar to MASH. 
+
+TODO: Fix abs values on sparse data
 """
 
 #Install the libraries
@@ -12,7 +14,7 @@ import matplotlib.pyplot as plt
 import igraph as ig
 from sklearn.manifold import MDS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
-from triangular_helper import *
+from .triangular_helper import *
 
 #Additional Libraries to support plotting and verbose levels
 from time import time
@@ -21,7 +23,7 @@ import seaborn as sns
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
                OD_method = "default", agg_method = "log", IDC = 1, #TODO: See if its possible to get rid of either OD_method or similarity Measure
-               overide_method = "default", #Maybe name this method and then have Jaccard, NAMA, and SPUD be seperate choosable methods
+               overide_method = "none", #Maybe name this method and then have Jaccard, NAMA, and SPUD be seperate choosable methods
                float_precision = np.float32, verbose = 0, **kwargs):
         '''
         Creates a class object. 
@@ -403,7 +405,7 @@ class SPUD:
       self.distsB = matrixB
 
     else: 
-      raise RuntimeError("Did not understand the similarity measure. Please use 'distances' (or none), 'nama', 'similarities', or 'jaccard'")
+      raise RuntimeError(f"Did not understand the overide method: {self.overide_method}. Please use 'distances' (or 'none'), 'nama', 'similarities', or 'jaccard'")
 
     #Perform the absolute value method
     if self.OD_method == "abs":

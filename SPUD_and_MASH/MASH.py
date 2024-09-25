@@ -791,6 +791,9 @@ class MASH: #Manifold Alignment with Diffusion
                     #Add in the hold out anchors to the known_anchors
                     self.known_anchors = np.concatenate([self.known_anchors, hold_out_anchors])
 
+                    #readjust known_anchors to correspond to off diagonal matricies
+                    self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
                 #Return True if we had found a new alignment, otherwise false
                 return added_connections
 
@@ -877,6 +880,9 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Add in the hold out anchors to the known_anchors
         self.known_anchors += hold_out_anchors
+
+        #Readjust known_anchors to correspond to off diagonal matricies
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         return added_connections
 
