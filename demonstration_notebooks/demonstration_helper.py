@@ -14,7 +14,7 @@ def prepare_dataset(filepath):
     """
 
     #Read in file
-    data = pd.read_csv("/yunity/arusty/Graph-Manifold-Alignment/SPUD_and_MASH/csv_files/iris.csv").to_numpy()
+    data = pd.read_csv(filepath).to_numpy()
 
     #Transform labels to numeric data
     labels = pd.Categorical(data[: , 0]).codes
