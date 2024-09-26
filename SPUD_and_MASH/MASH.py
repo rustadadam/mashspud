@@ -3,30 +3,16 @@
 Adam's Notes
 -------------
 
+Do we want to return the projections?
+Do we keep the prediction functions?
+
 Parameters in question of keeping: (In order of least helpful to more helpful)
--> Burn in: It seems unhelpfull all the time except when you get lucky. It doens't seem the worth of effort.
 -> Page Rank: It's effects are minimal. Rarely does anything. 
 -> Density Normalization: While it is clear what it does, it doesn't seem that helpful.
 -> DTM: Has its cases when it is uses to change to hellinger. Maybe add more variations or methods of transformation?
 
 -> Surprisingly, across the data the connection limit seems to have little impact. See Picture MASH_con_lim_effect
 
-MASH - Supervised Idea:
------------------------
-Question: How can we improve the optimize_by_connections method if MASH is supervised?
-
-Ideas: 
-1. What if we rigged similar to a neural network? Where the network was automatically built from any given node. It is a functional 
-network meaning that each layer would connect to a different node as the paths could go. It would then reach any node and could use the value
-received from that path to predict the label of that node. If its right, strengthen the connections, and wrong, weaken the connections (typical 
-of a nueral network.) We wouldn't have to do this is a neural network approach either. (NEEDS more thought.)
-
-2. Some kind of extended KNN prediction model? -> Maybe using Jaccard similarities measure? 
-If the node guess the label correctly, stregthen the path? (NEEDS more thought)
-
-3. For each node, find all of the nodes it could possibly reach. If the labels between the two nodes macth, we could strengthen the paths
-between those nodes. However, if the classes between those nodes don't macth, we can weaken the paths between those nodes. This should increase
-CE dramatically, and hopefully FOSCTTM too. (Simple, seems plausible. Maybe requires lots of computational power? We could just do it for those designated as anchors.)
 """
 
 
@@ -35,7 +21,7 @@ import graphtools
 import numpy as np
 from pandas import Categorical
 import seaborn as sns
-from vne import find_optimal_t
+from .vne import find_optimal_t #TODO: Check this out
 from itertools import takewhile
 import matplotlib.pyplot as plt
 from sklearn.manifold import MDS
@@ -46,7 +32,7 @@ from time import time
 
 class MASH: #Manifold Alignment with Diffusion
     def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", DTM = "log",
-                 page_rank = "None", IDC = 1, density_normalization = False, burn_in = 0,
+                 page_rank = "None", IDC = 1, density_normalization = False,
                  verbose = 0, **kwargs):
         """
         Parameters:
@@ -81,6 +67,10 @@ class MASH: #Manifold Alignment with Diffusion
                 normalization to the joined domains. 
 
             :DTM: Diffusion Transformation method. Can be set to "hellinger", "kl" or "log"
+
+            :verbose: ints 0,1,2,3. Level 0: no output. Level 1: Output only relating to the changes in the MASH function. Level 2: Outputs the processes as they
+                are completed. Level 3: Outputs time data, and images for the optimization function. 
+
             :kwargs: Key word arguments for graphtools.Graph functions. 
          """
 
@@ -88,7 +78,7 @@ class MASH: #Manifold Alignment with Diffusion
         #Store the needed information
         self.t = t
         self.knn = knn
-        self.page_rank = page_rank
+        self.page_rank = page_rank.lower()
         self.normalize_density = density_normalization
         self.DTM = DTM.lower()
         self.distance_measure_A = distance_measure_A
@@ -96,9 +86,8 @@ class MASH: #Manifold Alignment with Diffusion
         self.verbose = verbose
         self.kwargs = kwargs
         self.IDC = IDC
-        self.burn_in = burn_in
 
-        #Set self.emb to be None
+        #This is done for future plotting, and so we don't have to recalculate the embedding each time we want to plot something.
         self.emb = None
     
     def fit(self, dataA, dataB, known_anchors):
@@ -112,10 +101,10 @@ class MASH: #Manifold Alignment with Diffusion
         """
 
         #Print timing data
-        if self.verbose > 3:
+        if self.verbose > 2:
            print("Time Data Below")
 
-        #Add the data. Note, it will later be normalized
+        #Add the data. It will later be normalized.
         self.dataA = dataA
         self.dataB = dataB
 
@@ -136,7 +125,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.graphAB = self.merge_graphs()
         self.print_time(" Time it took to compute merge_graphs function:  ")
         
-        #Get Similarity matri
+        #Get Similarity matrix
         self.print_time()
         self.similarity_matrix = self.get_similarity_matrix(self.graphAB)
         self.print_time(" Time it took to compute similarity_matrix function:  ")
@@ -149,85 +138,17 @@ class MASH: #Manifold Alignment with Diffusion
         if self.verbose > 0:
             print("Fit process finished. We recommend calling optimize_by_creating_connections.")
 
-    """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
-    def FOSCTTM(self, off_diagonal): 
-        """
-        FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
-        
-        Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
-        to each other through the alignment process. If a method perfectly aligns all corresponding 
-        points, the average FOSCTTM score would be 0. 
 
-        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
-        of the block matrix. 
-        """
-        n1, n2 = np.shape(off_diagonal)
-        if n1 != n2:
-            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
-
-        dists = off_diagonal
-
-        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
-        nn.fit(dists)
-
-        _, kneighbors = nn.kneighbors(dists)
-
-        return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
+    """                                     <><><><><><><><><><><><><><><><><><><><>     
+                                                     HELPER FUNCTIONS BELOW
+                                            <><><><><><><><><><><><><><><><><><><><>                                                    """
     
-    def partial_FOSCTTM(self, off_diagonal, anchors):
-        """Follows the smae format as FOSCTTM.
-        
-        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
-        of the block matrix. 
-        
-        This calculates only a subset of points. It is intended to be used with hold-out anchors to help 
-        us gauge whether new connections yielded in a better alignment."""
-
-        n1, n2 = np.shape(off_diagonal)
-        if n1 != n2:
-            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
-
-        dists = off_diagonal
-
-        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
-        nn.fit(dists)
-
-        _, kneighbors = nn.kneighbors(dists)
-
-        return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
-    
-    def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
-        """
-        Returns the classification score by training on one domain and predicting on the the other.
-        This will test on both domains, and return the average score.
-        
-        Parameters:
-            :embedding: the manifold alignment embedding. 
-            :Labels: a concatenated list of labels for domain A and labels for domain B
-            :knn_args: the key word arguments for the KNeighborsClassifier."""
-
-        (labels1, labels2) = Labels
-
-        n1 = len(labels1)
-
-        #initialize the model
-        knn = KNeighborsClassifier(**knn_args)
-
-        #Fit and score predicting from domain A to domain B
-        knn.fit(embedding[:n1, :], labels1)
-        score1 =  knn.score(embedding[n1:, :], labels2)
-
-        #Fit and score predicting from domain B to domain A, and then return the average value
-        knn.fit(embedding[n1:, :], labels2)
-        return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
-
-    """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
     def print_time(self, print_statement =  ""):
-        """A function that times the algorithms and returns a string of how
-        long the function was last called."""
+        """A function that times the algorithms and returns a string of how long it has been
+       since the function was last called."""
 
-        #Only do this if the verbose is higher than 4
-        if self.verbose > 3:
+        #Only do this if the verbose is higher than 3
+        if self.verbose > 2:
 
             #Start time. 
             if not hasattr(self, 'start_time'):
@@ -263,11 +184,6 @@ class MASH: #Manifold Alignment with Diffusion
             #Create kernals
             self.print_time()
             self.kernalsA = self.get_SGDM(self.dataA, self.distance_measure_A)
-
-            """#Apply burn in if necessary
-            if self.burn_in > 0:
-                self.kernalsA = self.burn_in_domains(self.kernalsA)"""
-            
             self.print_time(" Time it took to execute SGDM for domain A:  ")
 
             #Create Graphs using our precomputed kernals
@@ -293,11 +209,6 @@ class MASH: #Manifold Alignment with Diffusion
             #Create kernals
             self.print_time()
             self.kernalsB = self.get_SGDM(self.dataB, self.distance_measure_B)
-
-            """#Apply burn in if necessary
-            if self.burn_in > 0:
-                self.kernalsB = self.burn_in_domains(self.kernalsB)"""
-            
             self.print_time(" Time it took to execute SGDM for domain B:  ")
 
             #Create Graphs using our precomputed kernals
@@ -316,21 +227,6 @@ class MASH: #Manifold Alignment with Diffusion
             self.print_time()
             self.kernalsB  = np.array(self.graph_b.K.toarray())
             self.print_time(" Time it took to compute kernal B:  ")
-
-    def burn_in_domains(self, kernal):
-        """Applies the diffusion just to domain A and B seperately to prepare for diffusion later on. Will return the kernal"""
-
-        # Row normalize the matrix
-        kernal = self.row_normalize_matrix(kernal)
-
-        #Raise the normalized matrix to the burn_in power
-        kernal = np.linalg.matrix_power(kernal, self.burn_in)
-
-        #Apply the aggregation function
-        #kernal = self.apply_aggregation(kernal)
-
-        #Convert it back to similarities
-        return self.normalize_0_to_1(kernal)
     
     def apply_aggregation(self, matrix):
         """Apply the aggregation function to a powered diffusion operator"""
@@ -375,7 +271,7 @@ class MASH: #Manifold Alignment with Diffusion
             if np.isnan(data).any(): #NOTE: Test ignoring infinites as well
 
                 if self.verbose > 0:
-                    print("Warning. NaN's dectected. Calculating distances by ignoring NaN positions, and normalizing. May take longer.")
+                    print("NaN's dectected. Calculating distances by ignoring NaN positions and normalizing. May take longer.")
 
                 #Proceed with the NanN adjustments by creating a custom nan function we can pass into pdist
                 def nan_metric(row_a, row_b, metric):
@@ -399,7 +295,7 @@ class MASH: #Manifold Alignment with Diffusion
                 dists = squareform(pdist(data, metric = distance_measure.lower())) #Add it here -> if its in already for additionally block
 
         else:
-            raise RuntimeError(f"Did not understand {distance_measure}. Please provide a function, or use strings 'precomputed', or provided by sk-learn.")
+            raise RuntimeError(f"Did not understand {distance_measure}. Please provide a function, or use strings provided by sk-learn metrics or type 'precomputed'.")
 
         #Normalize it and return the data
         return self.normalize_0_to_1(dists)
@@ -448,8 +344,6 @@ class MASH: #Manifold Alignment with Diffusion
     def kl_divergence_matrix(self, matrix):
         """
         Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
-
-        Link to KL divergence formula and definition: https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence
 
         Parameters:
         matrix (numpy.ndarray): This should be the diffused matrix
@@ -537,10 +431,9 @@ class MASH: #Manifold Alignment with Diffusion
         #Keep Track of known-connections by creating a mask of everywhere we have a connection
         known_connections = self.similarity_matrix > 0
 
-        if self.verbose > 0:
+        if self.verbose > 1:
             print(f"Total number of Known_connections: {np.sum(known_connections)}")
 
-        
         #This is made into an array to ensure the self.int_diff_dist is not changed
         array = np.array(self.int_diff_dist)
 
@@ -557,9 +450,6 @@ class MASH: #Manifold Alignment with Diffusion
         if connection_limit == None:
             connection_limit = int((np.min(array.shape) - len(self.known_anchors)) / 3)
 
-        """ This section below actually finds and then curates potential anchors """
-
-        
         # Flatten the array
         array_flat = array.flatten()
 
@@ -580,8 +470,11 @@ class MASH: #Manifold Alignment with Diffusion
 
         return coordinates
 
-    """THE PRIMARY FUNCTIONS"""
-    def merge_graphs(self): #NOTE: This process takes a significantly longer with more KNN (O(N) complexity)
+    """                                     <><><><><><><><><><><><><><><><><><><><>     
+                                                    PRIMARY FUNCTIONS BELOW
+                                             <><><><><><><><><><><><><><><><><><><><>                                                    """
+    
+    def merge_graphs(self): 
         """Creates a new graph (called graphAB) from graphs A and B using the known_anchors,
         adding an edge set with weight of 1 (as it is a similarity measure).
         
@@ -631,19 +524,15 @@ class MASH: #Manifold Alignment with Diffusion
             self.t = find_optimal_t(matrix) 
 
             #If we found a T
-            if self.verbose > 0:
+            if self.verbose > 1:
                 print(f"Using optimal t value of {self.t}")
-
-        if self.burn_in > 0:
-            matrix[self.len_A:, self.len_A:] = self.burn_in_domains(matrix[self.len_A:, self.len_A:])
-            matrix[:self.len_A, :self.len_A] = self.burn_in_domains(matrix[:self.len_A, :self.len_A])
-                
+     
         # Row normalize the matrix
         normalized_matrix = self.row_normalize_matrix(matrix)
 
         #Apply the page rank algorithm
         if self.page_rank == "full":
-            if self.verbose > 2:
+            if self.verbose > 1:
                 print("Applying Page Ranking against the full matrix")
             
             normalized_matrix = self.apply_page_rank(normalized_matrix)
@@ -651,7 +540,7 @@ class MASH: #Manifold Alignment with Diffusion
         
         #Get off-Diagonal blocks and apply the Page Rank transformation
         elif self.page_rank == "off-diagonal":
-            if self.verbose > 2:
+            if self.verbose > 1:
                 print("Applying Rage Ranking against the off-diagonal parts of the matrix")
 
             normalized_matrix[:self.len_A, self.len_A:] = self.apply_page_rank(normalized_matrix[:self.len_A, self.len_A:]) #Top right
@@ -756,7 +645,7 @@ class MASH: #Manifold Alignment with Diffusion
         #-----------------------------------------------------------------      Rebuild Class for each epoch        -----------------------------------------------------------------    
         for epoch in range(0, epochs):
             
-            if self.verbose > 0:
+            if self.verbose > 1:
                 print(f"<><><><><><><><><><><><>    Starting Epoch {epoch}    <><><><><><><><><><><><><>")
 
             #Find predicted anchors
@@ -764,7 +653,7 @@ class MASH: #Manifold Alignment with Diffusion
 
             #If no new connections are found, quit the process
             if len(new_connections) < 1:
-                if self.verbose > 0:
+                if self.verbose > 1:
                     print("No new_connections. Exiting process")
 
                 #Add in the known anchors and reset the known_anchors, similarity_matrix, and diffusion matrix
@@ -798,7 +687,7 @@ class MASH: #Manifold Alignment with Diffusion
                 return added_connections
 
             #Continue to show connections
-            if self.verbose > 0:
+            if self.verbose > 1:
                 print(f"New connections found: {len(new_connections)}")
 
             #Copy Similarity matrix
@@ -809,7 +698,7 @@ class MASH: #Manifold Alignment with Diffusion
             new_similarity_matrix[(new_connections[:, 0] + self.len_A).astype(int) , new_connections[:, 1].astype(int)] = max_weight - new_connections[:, 2] #This is so we get the connections in the other off-diagonal block
 
             #Show the new connections
-            if self.verbose > 1:
+            if self.verbose > 2:
                 plt.imshow(new_similarity_matrix)
                 plt.show()
 
@@ -822,7 +711,7 @@ class MASH: #Manifold Alignment with Diffusion
             #See if the extra connections helped
             if new_score < current_score or len(hold_out_anchors) < 1:
 
-                if self.verbose > 0:
+                if self.verbose > 1:
                     print(f"The new connections improved the alignment by {current_score - new_score}\n-----------     Keeping the new alignment. Continuing...    -----------\n")
 
                 #Reset all the class variables. We don't worry about the calculating the projection matricies until the last epoch.
@@ -836,7 +725,7 @@ class MASH: #Manifold Alignment with Diffusion
                 added_connections = True
 
             else:
-                if self.verbose > 0:
+                if self.verbose > 1:
                     print(f"The new connections worsened the alignment by {new_score - current_score}\n-----------     Pruning the new connections. Continuing...    -----------\n")
 
                 #Add the added connections to the the pruned_connections
@@ -886,10 +775,14 @@ class MASH: #Manifold Alignment with Diffusion
 
         return added_connections
 
-    """PREDICTING FEATURE FUNCTIONS"""
+    """                                     <><><><><><><><><><><><><><><><><><><><>     
+                                                    PRIMARY FUNCTIONS BELOW
+                                             <><><><><><><><><><><><><><><><><><><><>                                                    """
     def predict_feature(self, predict_with = "A"):
         """
         Predicts the the feature values from one domain to the other using the projection matricies. 
+    
+        NOTE: This function is in experimentation. 
 
         Arguments:
         predict_with should be which graph data you want to use. 'A' for graph A and 'B' for graph B.
@@ -925,7 +818,9 @@ class MASH: #Manifold Alignment with Diffusion
 
         return completeData
 
-    """VISUALIZE AND TEST FUNCTIONS"""
+    """                                     <><><><><><><><><><><><><><><><><><><><>     
+                                             VISUALIZATION AND TEST FUNCTIONS BELOW
+                                            <><><><><><><><><><><><><><><><><><><><>                                                    """
     def plot_heat_maps(self):
         """
         Plots and shows the heat maps for the similarity matrix, powered diffusion opperator,
@@ -943,7 +838,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Diffusion matrix
         axes[1].imshow(self.int_diff_dist)
-        axes[1].set_title("Integrated Diffusion Distance Matricies")
+        axes[1].set_title("Integrated Diffusion Distance Matrix")
 
         plt.show()
 
@@ -1110,3 +1005,80 @@ class MASH: #Manifold Alignment with Diffusion
         self.t = int(t_str)
 
         print(f"The best T value is {(F_scores.argmin() +1) * rate} with a FOSCTTM of {(F_scores.min()):.4g}")
+
+    """                                     <><><><><><><><><><><><><><><><><><><><>     
+                                                   EVALUATION FUNCTIONS BELOW
+                                            <><><><><><><><><><><><><><><><><><><><>                                                    """
+    
+    def FOSCTTM(self, off_diagonal): 
+        """
+        FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
+        
+        Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
+        to each other through the alignment process. If a method perfectly aligns all corresponding 
+        points, the average FOSCTTM score would be 0. 
+
+        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
+        of the block matrix. 
+        """
+
+        n1, n2 = np.shape(off_diagonal)
+        if n1 != n2:
+            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+
+        dists = off_diagonal
+
+        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+        nn.fit(dists)
+
+        _, kneighbors = nn.kneighbors(dists)
+
+        return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
+    
+    def partial_FOSCTTM(self, off_diagonal, anchors):
+        """Follows the same format as FOSCTTM.
+        
+        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
+        of the block matrix. 
+        
+        This calculates only a subset of points. It is intended to be used with hold-out anchors to help 
+        us gauge whether new connections yield in a better alignment."""
+
+        n1, n2 = np.shape(off_diagonal)
+        if n1 != n2:
+            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+
+        dists = off_diagonal
+
+        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+        nn.fit(dists)
+
+        _, kneighbors = nn.kneighbors(dists)
+
+        return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
+    
+    def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
+        """
+        Returns the classification score by training on one domain and predicting on the the other.
+        This will test on both domains, and return the average score.
+        
+        Parameters:
+            :embedding: the manifold alignment embedding. 
+            :Labels: a concatenated list of labels for domain A and labels for domain B
+            :knn_args: the key word arguments for the KNeighborsClassifier."""
+
+        (labels1, labels2) = Labels
+
+        n1 = len(labels1)
+
+        #initialize the model
+        knn = KNeighborsClassifier(**knn_args)
+
+        #Fit and score predicting from domain A to domain B
+        knn.fit(embedding[:n1, :], labels1)
+        score1 =  knn.score(embedding[n1:, :], labels2)
+
+        #Fit and score predicting from domain B to domain A, and then return the average value
+        knn.fit(embedding[n1:, :], labels2)
+        return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
+
