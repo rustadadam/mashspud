@@ -81,6 +81,10 @@ class SPUD:
         #Set self.emb to be None
         self.emb = None
 
+        #Ensure there is a random state
+        if "random_state" not in self.kwargs.keys():
+            self.kwargs["random_state"] = 42
+
         #Adjust the values to work together
         if self.overide_method != "none" and self.OD_method == "default":
           if self.verbose > 0:
@@ -261,7 +265,9 @@ class SPUD:
     #Normalize it and return the data
     return get_triangular(self.normalize_0_to_1(dists))
 
-  """<><><><><><><><><><><><><><><><><><><><>     EVALUATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+  """                                       <><><><><><><><><><><><><><><><><><><><><>     
+                                                   EVALUATION FUNCTIONS BELOW
+                                            <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
       """
       Returns the classification score by training on one domain and predicting on the the other.
@@ -310,52 +316,10 @@ class SPUD:
         _, kneighbors = nn.kneighbors(dists)
 
         return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
-  
-  def compute_scores(self, labels, **kwargs):
-      """Returns the FOSCTTM and CE score. 
-      
-      Labels should be the labels for domain A concatenated with domain B.
-      
-      Other key word arguments are to fit the MDS if necessary"""
 
-      #Calculate FOSCTTM
-      try:
-        FOSCTTM_score = self.FOSCTTM(self.block[self.len_A:, :self.len_A])
-      except:
-        raise RuntimeError("SPUD must be fit first.")
-      
-      if self.verbose > 1:
-        print(f"FOSCTTM: {FOSCTTM_score}") #This gets the off-diagonal part
-
-      #Check to see if we already have created our embedding, else create the embedding.
-      if type(self.emb) == type(None):
-        #Time the embedding creation
-        self.print_time()
-
-        #Create the mds object and then the embedding
-        mds = MDS(metric=True, dissimilarity = 'precomputed', **kwargs)
-        self.emb = mds.fit_transform(self.block) 
-
-        if self.verbose > 2:
-          print("Embedding Calculated. Will not need to be calculated for future plotting again.")
-
-        self.print_time("Time it took to calculate the embedding: ")
-      
-      elif self.verbose > 2:
-         print("Embedding already calculated. ")
-
-      #Seperate the labels into their respective domains
-      first_labels = labels[:self.len_A]
-      second_labels = labels[self.len_A:]
-
-      #Compute Cross Embedding
-      CE_score = self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})
-      if self.verbose > 1:
-        print(f"Cross Embedding: {CE_score}")
-
-      return FOSCTTM_score, CE_score
-
-  """<><><><><><><><><><><><><><><><><><><><>     PRIMARY FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+  """                                       <><><><><><><><><><><><><><><><><><><><><>     
+                                                      PRIMARY FUNCTIONS BELOW
+                                            <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def merge_graphs(self):
         """
         Creates a new graph from graphs A and B creating edges between corresponding points
@@ -507,7 +471,9 @@ class SPUD:
 
     return block
 
-  """<><><><><><><><><><><><><><><><><><><><>     VIZUALIZATION FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+  """                                       <><><><><><><><><><><><><><><><><><><><><>     
+                                            VISUALIZATION AND SCORING FUNCTIONS BELOW
+                                            <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def plot_graphs(self):
     """
     Using the Igraph plot function to plot graphs A, B, and AB. 
@@ -559,41 +525,14 @@ class SPUD:
             :**kwargs: additional key word arguments for sns.scatterplot function.
         """
 
-        #Check to see if we already have created our embedding, else create the embedding.
-        if type(self.emb) == type(None):
-          #Time the embedding creation
-          self.print_time()
+        FOSCTTM_score, CE_score = self.get_scores(labels)
 
-          #Create the mds object and then the embedding
-          mds = MDS(metric=True, dissimilarity = 'precomputed', **kwargs)
-          self.emb = mds.fit_transform(self.block) 
+        print(f"Cross Embedding score: {CE_score}")
+        print(f"Fraction of Samples Closest to thier Match: {FOSCTTM_score}")
 
-          if self.verbose > 2:
-            print("Embedding Calculated. Will not need to be calculated for future plotting again.")
-
-          self.print_time("Time it took to calculate the embedding: ")
-
-        #Check to make sure we have labels
-        if type(labels)!= type(None):
-            #Seperate the labels into their respective domains
-            first_labels = labels[:self.len_A]
-            second_labels = labels[self.len_A:]
-
-            #Calculate Cross Embedding Score
-            try: #Will fail if the domains shapes aren't equal
-                print(f"Cross Embedding: {self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})}")
-            except:
-                print("Can't calculate the Cross embedding")
-        else:
+        if type(labels) == type(None):
             #Set all labels to be the same
             labels = np.ones(shape = (len(self.emb)))
-
-        #Calculate FOSCTTM Scores
-        try:    
-            print(f"FOSCTTM: {self.FOSCTTM(self.block[self.len_A:, :self.len_A])}") #This gets the off-diagonal part
-        except: #This will run if the domains are different shapes
-            print("Can't compute FOSCTTM with different domain shapes.")
-
 
         #Time the plotting creation
         self.print_time()
@@ -610,7 +549,7 @@ class SPUD:
         #If show_pred is chosen, we want to show labels in Domain B as muted
         if show_pred:
             ax = sns.scatterplot(x = self.emb[self.len_A:, 0], y = self.emb[self.len_A:, 1], color = "grey", s=120, marker= "o", **kwargs)
-            ax = sns.scatterplot(x = self.emb[:self.len_A, 0], y = self.emb[:self.len_A, 1], hue = Categorical(first_labels), s=120, marker= "^", **kwargs)
+            ax = sns.scatterplot(x = self.emb[:self.len_A, 0], y = self.emb[:self.len_A, 1], hue = Categorical(labels[:self.len_A]), s=120, marker= "^", **kwargs)
         
         else:
             #Now plot the points with correct lables
@@ -655,14 +594,14 @@ class SPUD:
 
             #Instantial model, fit on domain A, and predict for domain B
             knn_model = KNeighborsClassifier(n_neighbors=4)
-            knn_model.fit(self.emb[:self.len_A, :], first_labels)
+            knn_model.fit(self.emb[:self.len_A, :], labels[:self.len_A])
             second_pred = knn_model.predict(self.emb[self.len_A:, :])
             
             #Create the figure
             plt.figure(figsize=(14, 8))
 
             #Now plot the points
-            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([first_labels, second_pred])), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
+            ax = sns.scatterplot(x = self.emb[:, 0], y = self.emb[:, 1], style = styles, hue = Categorical(np.concatenate([labels[:self.len_A], second_pred])), s=120, markers= {"Domain A": "^", "Domain B" : "o"}, **kwargs)
 
             #Set the title
             ax.set_title("Predicted Labels")
@@ -670,3 +609,42 @@ class SPUD:
             plt.show()
 
         self.print_time("Time it took complete the plots: ")
+
+  def get_scores(self, labels = None, n_comp = 2):
+    """
+    Returns the FOSCTTM score and Cross_embedding Score. If labels are not provided, the Cross Embedding will be returned as None.
+
+    Parameters:
+        :labels: the labels for the dataset. If labels are not provided, just the FOSCTTM score will be returned.
+        :n_comp: the number of components for the MDS.
+    """
+
+    #Check to see if we already have created our embedding, else create the embedding.
+    if type(self.emb) == type(None):
+        #Convert to a MDS
+        self.print_time()
+        mds = MDS(metric=True, dissimilarity = 'precomputed', n_components= n_comp, random_state = self.kwargs["random_state"])
+        self.emb = mds.fit_transform(self.block)
+        self.print_time("Time it took to calculate the embedding: ")
+
+    #Check to make sure we have labels
+    if type(labels)!= type(None):
+        #Seperate the labels into their respective domains
+        first_labels = labels[:self.len_A]
+        second_labels = labels[self.len_A:]
+
+        #Calculate Cross Embedding Score
+        try: 
+            CE_score = self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})
+        except:
+            CE_score = None
+    else:
+        CE_score = None
+
+    #Calculate FOSCTTM score
+    try:    
+        FOSCTTM_score = self.FOSCTTM(self.block[self.len_A:, :self.len_A])
+    except: #This will run if the domains are different shapes
+        FOSCTTM_score = None
+
+    return FOSCTTM_score, CE_score

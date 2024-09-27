@@ -36,6 +36,7 @@ def split_features(features, split = "distort"):
         """
 
         import random
+        random.seed(42)
 
         if split == "random":
 
@@ -82,6 +83,8 @@ def create_anchors(dataset_size):
     """Returns an array of anchors equal to the datset size."""
 
     import random
+
+    random.seed(42)
 
     #Generate anchors that can be subsetted
     rand_ints = random.sample(range(dataset_size), dataset_size)
