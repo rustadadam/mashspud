@@ -954,7 +954,7 @@ class MASH: #Manifold Alignment with Diffusion
 
             plt.show()
 
-    def plot_t_grid(self, rate = 3):
+    def plot_t_grid(self, rate = 5):
         """Plots the powered diffusion operator many times each with a different t value. Also plots
         the associated projection matrix. 
         
@@ -968,34 +968,26 @@ class MASH: #Manifold Alignment with Diffusion
         t_str = str(self.t)
         
         #Create the figure
-        fig, axes = plt.subplots(nrows=4, ncols=5, figsize=(20, 16))
+        fig, axes = plt.subplots(nrows=1, ncols=5, figsize=(13, 17))
 
         #Create an empty list to store the FOSCTTM scores
         F_scores = np.array([])
 
-        for i in range(1, 11):
-            # Calculate the row and column index for the current subplot
-            row = (i - 1) // 5
-            col = (i - 1) % 5
-            
+        for i in range(1, 6):
+
             # Perform the diffusion operation
             self.t = i * rate
-            diffused_array, projectionAB, projectionBA = self.get_diffusion(self.similarity_matrix)
+            diffused_array = self.get_diffusion(self.similarity_matrix, return_projection=False)
 
             #Calculate FOSCTTM score
-            F_scores = np.append(F_scores, self.FOSCTTM(diffused_array))
+            F_score = self.FOSCTTM(diffused_array[self.len_A:, :self.len_A])
             
             # Plotting the diffused array
-            ax = axes[row, col]
+            ax = axes[i-1]
             ax.imshow(diffused_array)
-            ax.set_title(f'T value {self.t}, FOSCTTM {(F_scores[i-1]):.4g}')
+            ax.set_title(f'T value {self.t}, FOSCTTM {(F_score):.4g}', fontsize = 10)
             ax.axis('off')
 
-            #Plotting the associated Projections
-            ax = axes[row+2, col]
-            ax.imshow(projectionAB)
-            ax.set_title(f'ProjectionAB: T value {self.t}')
-            ax.axis('off')
             
         #Show the plot
         plt.tight_layout()
@@ -1003,8 +995,6 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Restore t value
         self.t = int(t_str)
-
-        print(f"The best T value is {(F_scores.argmin() +1) * rate} with a FOSCTTM of {(F_scores.min()):.4g}")
 
     """                                     <><><><><><><><><><><><><><><><><><><><>     
                                                    EVALUATION FUNCTIONS BELOW
