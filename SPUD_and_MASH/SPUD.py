@@ -19,6 +19,7 @@ from .triangular_helper import *
 #Additional Libraries to support plotting and verbose levels
 from time import time
 import seaborn as sns
+from pandas import Categorical
 
 class SPUD:
   def __init__(self, distance_measure_A = "euclidean", distance_measure_B = "euclidean", knn = 5,
@@ -177,7 +178,9 @@ class SPUD:
      """Returns the reconstructed distance matrix for kernal B"""
      return reconstruct_symmetric(self.kernalsB)
   
-  """<><><><><><><><><><><><><><><><><><><><>     HELPER FUNCTIONS BELOW     <><><><><><><><><><><><><><><><><><><><>"""
+  """                                       <><><><><><><><><><><><><><><><><><><><><>     
+                                                      HELPER FUNCTIONS BELOW
+                                            <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def print_time(self, print_statement =  ""):
     """A function that times the algorithms and returns a string of how
     long the function was last called."""
@@ -542,9 +545,6 @@ class SPUD:
 
         #Create the figure
         plt.figure(figsize=(14, 8))
-
-        #Imporrt pandas for the categorical function
-        from pandas import Categorical
 
         #If show_pred is chosen, we want to show labels in Domain B as muted
         if show_pred:
