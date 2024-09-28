@@ -772,9 +772,9 @@ class MASH: #Manifold Alignment with Diffusion
             print("<><><><><><><><><><<><><><><<> Epochs Finished <><><><><><><><><><><><><><><><><>")
 
         #Add in the hold out anchors to the known_anchors
-        self.known_anchors += hold_out_anchors
+        self.known_anchors = np.concatenate([self.known_anchors, hold_out_anchors])
 
-        #Readjust known_anchors to correspond to off diagonal matricies
+        #readjust known_anchors to correspond to off diagonal matricies
         self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
 
         return added_connections
