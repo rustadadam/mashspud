@@ -2,8 +2,6 @@
 Shortest Path to Union Domains (SPUD)
 
 A class that learns the inter-geodesic distances between manifolds. Similar to MASH. 
-
-TODO: Fix abs values on sparse data
 """
 
 #Install the libraries
@@ -374,44 +372,26 @@ class SPUD:
     else: 
       raise RuntimeError(f"Did not understand the overide method: {self.overide_method}. Please use 'distances' (or 'none'), 'nama', 'similarities', or 'jaccard'")
 
-    #Perform the absolute value method
+
+    """Preform the absolute value and mean methods"""
+
+    #Take the mean of each one first, then select.
+    anchor_dists_A = get_triangular_mean(*index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
+    anchor_dists_B = get_triangular_mean(*index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True))
+
+    #Strecth A and B to be the correct sizes, and so each value matches up with each other value.
+    anchor_dists_A = np.repeat(anchor_dists_A.astype(self.float_precision), repeats= self.len_B)
+    anchor_dists_B = np.tile(anchor_dists_B.astype(self.float_precision), self.len_A)
+
     if self.OD_method == "abs":
 
-      #Subset A and B to only the columns so we only have the distances to the anchors
-      anchor_dists_A, indiciesA = index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)
-      anchor_dists_B, indiciesB = index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True)
-
-      # Find the indices of the closest anchors for each node in both graphs
-      A_smallest_index = min_bincount(anchor_dists_A, indiciesA) #NOTE: These are the index positions of the smallest value, but its flattened according to the triangular. 
-      B_smallest_index = min_bincount(anchor_dists_B, indiciesB) #NOTE Continued: If the triangulars are different sizes we might need to adjust the values because they wont match up. 
-
-      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      matrixA = np.repeat(anchor_dists_A[A_smallest_index].astype(self.float_precision), repeats=self.len_B)
-      matrixB = np.tile(anchor_dists_B[A_smallest_index].astype(self.float_precision), self.len_A)
-
-      off_diagonal_using_A_anchors = np.abs(matrixA - matrixB)
-
-      #Strecth A and B to be the correct sizes, and then select the subtraction anchors
-      matrixA = np.repeat(anchor_dists_A[B_smallest_index].astype(self.float_precision), repeats=self.len_B)
-      matrixB = np.tile(anchor_dists_B[B_smallest_index].astype(self.float_precision), self.len_A)
-
-      off_diagonal_using_B_anchors = np.abs(matrixA - matrixB)
-
-      #Perform the calculation
-      off_diagonal = np.reshape(np.minimum(off_diagonal_using_A_anchors, off_diagonal_using_B_anchors), newshape=(self.len_A, self.len_B))
+      #Convert it to the square matrix. NOTE: We chose not to convert this back into a triangular. If memory is a concern, we recommend you add "reconstruct triagular" method here and adjust the code accordingly.
+      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B), newshape=(self.len_A, self.len_B))
 
     elif self.OD_method == "mean":
-
-      #Take the mean of each one first, then select.
-      anchor_dists_A = get_triangular_mean(*index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
-      anchor_dists_B = get_triangular_mean(*index_triangular(matrixB, columns = self.known_anchors[:, 1], return_indices=True))
-
-      #Strecth A and B to be the correct sizes, and so each value matches up with each other value.
-      anchor_dists_A = np.repeat(anchor_dists_A.astype(self.float_precision), repeats= self.len_B)
-      anchor_dists_B = np.tile(anchor_dists_B.astype(self.float_precision), self.len_A)
       
-      #Convert it to the square matrix. NOTE: Do we want to convert it back into a triangular????? - Probably not.
-      off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B), newshape=(self.len_A, self.len_B))
+      #Convert it to the square matrix. NOTE: We chose not to convert this back into a triangular. If memory is a concern, we recommend you add "reconstruct triagular" method here and adjust the code accordingly.
+      off_diagonal = np.reshape((anchor_dists_A + anchor_dists_B)/2, newshape=(self.len_A, self.len_B))
 
     else:
        raise RuntimeError("Did not understand your input for OD_method (Off-Diagonal method). Please use 'mean', 'abs', or 'default'.")
