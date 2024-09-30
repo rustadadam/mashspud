@@ -1,20 +1,4 @@
 #MASH (Manifold Alignment with Diffusion)
-"""
-Adam's Notes
--------------
-
-Do we want to return the projections?
-Do we keep the prediction functions?
-
-Parameters in question of keeping: (In order of least helpful to more helpful)
--> Page Rank: It's effects are minimal. Rarely does anything. 
--> Density Normalization: While it is clear what it does, it doesn't seem that helpful.
--> DTM: Has its cases when it is uses to change to hellinger. Maybe add more variations or methods of transformation?
-
--> Surprisingly, across the data the connection limit seems to have little impact. See Picture MASH_con_lim_effect
-
-"""
-
 
 #Import the needed libraries
 import graphtools
@@ -782,9 +766,9 @@ class MASH: #Manifold Alignment with Diffusion
     """                                      <><><><><><><><><><><><><><><><><><><><>     
                                                     PRIMARY FUNCTIONS BELOW
                                              <><><><><><><><><><><><><><><><><><><><>                                                    """
-    def predict_feature(self, predict_with = "A"):
+    def project_feature(self, predict_with = "A"):
         """
-        Predicts the the feature values from one domain to the other using the projection matricies. 
+        Project the the feature values from one domain to the other using the projection matricies. 
     
         NOTE: This function is in experimentation. 
 

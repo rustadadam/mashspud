@@ -16,8 +16,8 @@ setup(
         "numpy",
         "matplotlib",
         "igraph",
-        "sklearn",
-        "time",
+        "scikit-learn",
+        #"time.time", #I am having troubles with this one. Time might be native?
         "seaborn",
         "pandas"
     ],
