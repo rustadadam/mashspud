@@ -7,7 +7,7 @@ setup(
     packages=find_packages(), 
     description='Manifold Alignment Methods',
     author='Adam G. Rustad',
-    url='https://github.com/rustadadam/SPUD_and_MASH.git',  
+    url='https://github.com/rustadadam/mashspud.git',  
     include_package_data=True,  
     install_requires=[  # List of dependencies
         "scipy",
