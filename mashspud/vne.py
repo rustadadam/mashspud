@@ -1,5 +1,12 @@
+# References:
+# 
 # author: Daniel Burkhardt <daniel.burkhardt@yale.edu>
-# (C) 2017 Krishnaswamy Lab GPLv2
+#         (C) 2017 Krishnaswamy Lab GPLv2
+# 
+# Moon KR, van Dijk D, Zheng W, *et al.* (2019),
+#         *Visualizing transitions and structure for biological data exploration*,
+#         `Nature Biotechnology <https://doi.org/10.1038/s41587-019-0336-3>'
+
 
 from __future__ import print_function, division
 import numpy as np
