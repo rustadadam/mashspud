@@ -24,46 +24,32 @@ class SPUD:
                OD_method = "default", agg_method = "log", IDC = 1, #TODO: See if its possible to get rid of either OD_method or similarity Measure
                overide_method = "none", #Maybe name this method and then have Jaccard, NAMA, and SPUD be seperate choosable methods
                float_precision = np.float32, verbose = 0, **kwargs):
-        '''
-        Creates a class object. 
-        
-        Arguments:
-          :distance_measure_A: Either a function, "precomputed" or SciKit_learn metric strings for domain A. If it is a function, then it should
-            be formated like my_func(data) and returns a distance measure between points. Self will be passed as the first argument.
-            If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
-            function uses Euclidian distance, but this may manually changed through kwargs assignment.
+        """
+        Initializes the class object.
 
-          :distance_measure_B: Either a function, "precomputed" or SciKit_learn metric strings for domain B. If it is a function, then it should
-            be formated like my_func(data) and returns a distance measure between points. Self will be passed as the first argument.
-            If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
-            function uses Euclidian distance, but this may manually changed through kwargs assignment.
-
-          :Knn: states how many nearest neighbors we want to use in the graph construction. If
-            Knn is set to "connect" then it will ensure connection in the graph.
-
-          :OD_method: stands for Off-diagonal method. Can be the strings "abs", "mean" or "default". "Abs" calculates the absolute distances between the
-            shortest paths to the same anchor, where as default calculates the shortest paths by traveling through an anchor. "Mean" calculates the average distance
-            by going through each anchor. Default usually outpreforms both "abs" and "mean".
-
-          :agg_method: States the method of how we want to adjust the off-diagonal blocks in the alignment. 
-            It can be 'sqrt', 'log', any float, or 'None'.
-            If 'sqrt', it applies a square root function, and then transposes it to start at 0. Best for when domains aren't the same shape.
-            If 'log', it applies a natural log, and then gets the distances between each point. Requires 1 to 1 correspondence.
-            If 'None', it applies no additional transformation besides normalizing the values between 0 and 1.
-            If given a float, it multiplies the off-diagonal block by the float value.  
-
-          :IDC: stands for Inter-domain correspondence. It is the similarity value for anchors points between domains. Often, it makes sense
-            to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
-            representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
-            deemed too strong, the user may choose to assign the IDC < 1.
-
-          :overide_method: Defaults to None. It can be NAMA, similarities, or Jaccard. Default uses the alpha decaying kernal to determine distances between nodes. Jaccard applies the jaccard similarity
-            to the resulting graph. NAMA uses the original distances from the Pdist function. We recommend using NAMA for data that is very large. 
-            
-          :verbose: can be any float or integer. Determines what is printed as output as the function runs.
-
-          :**kwargs: key word values for the graphtools.Graph function. 
-          '''
+        Parameters
+        ----------
+        distance_measure_A : str or callable, optional
+            Distance measure for domain A. Can be a function, "precomputed", or a SciKit-learn metric string.
+        distance_measure_B : str or callable, optional
+            Distance measure for domain B. Can be a function, "precomputed", or a SciKit-learn metric string.
+        knn : int or str, optional
+            Number of nearest neighbors for graph construction. If "connect", ensures graph connection.
+        OD_method : str, optional
+            Off-diagonal method. Options are "abs", "mean", or "default".
+        agg_method : str or float, optional
+            Method to adjust off-diagonal blocks in alignment. Options are 'sqrt', 'log', any float, or 'None'.
+        IDC : float, optional
+            Inter-domain correspondence value for anchor points between domains.
+        overide_method : str, optional
+            Method to override default. Options are "none", "NAMA", "similarities", or "Jaccard".
+        float_precision : dtype, optional
+            Precision of floating-point numbers.
+        verbose : int or float, optional
+            Level of verbosity for output.
+        **kwargs : dict, optional
+            Additional keyword arguments for the graphtools.Graph function.
+        """
 
         #Set the values
         self.distance_measure_A = distance_measure_A
@@ -92,17 +78,20 @@ class SPUD:
           self.OD_method = "mean"
 
   def fit(self, dataA, dataB, known_anchors):
-        '''
-        Does the work to compute the manifold alignment using shortest path distances. 
-        
-        Parameters:
-          :dataA: the data for domain A. 
-          :dataB: the data for domain B. 
-          :known_anchors: this represents the points in domain A that correlate to domain B. Should be in a list
-            formated like (n, 2), where n is the number of points that correspond. For any nth position, the 0th 
-            place represents the point in domain A and the 1st position represents the point in domain B. Thus
-            [[1,1], [4,3], [7,6]] would be appropiate.
-        '''
+        """
+        Computes the manifold alignment using shortest path distances.
+
+        Parameters
+        ----------
+        dataA : array-like
+            The data for domain A.
+        dataB : array-like
+            The data for domain B.
+        known_anchors : list of tuples
+            Points in domain A that correlate to domain B. Should be formatted as (n, 2), where n is the number of points that correspond.
+            For any nth position, the 0th place represents the point in domain A and the 1st position represents the point in domain B.
+            Example: [[1,1], [4,3], [7,6]].
+        """
 
         #Cache these values for fast lookup
         self.len_A = len(dataA) 
@@ -180,8 +169,12 @@ class SPUD:
                                                       HELPER FUNCTIONS BELOW
                                             <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def print_time(self, print_statement =  ""):
-    """A function that times the algorithms and returns a string of how
-    long the function was last called."""
+    """
+    Times the algorithms and prints how long it has been since the function was last called.
+
+    Parameters:
+        print_statement (str): A statement to print before the timing information.
+    """
 
     #Only do this if the verbose is higher than 4
     if self.verbose > 3:
@@ -207,7 +200,9 @@ class SPUD:
         print(print_statement + time_string)
 
   def normalize_0_to_1(self, value):
-    """Normalizes the value to be between 0 and 1 and resets infinite values."""
+    """
+    Normalizes the value to be between 0 and 1 and resets infinite values.
+    """
 
     #Scale it and check to ensure no devision by 0
     if np.max(value[~np.isinf(value)]) != 0:
@@ -219,8 +214,22 @@ class SPUD:
     return value
 
   def get_SGDM(self, data, distance_measure):
-    """SGDM - Same Graph Distance Matrix.
-    This returns the normalized distances within each domain."""
+    """
+    SGDM - Same Graph Distance Matrix.
+    Returns the normalized distances within each domain.
+
+    Parameters
+    ----------
+    data : array-like
+        The data for which the distance matrix is to be computed.
+    distance_measure : str or callable
+        The distance measure to use. Can be a function, "precomputed", or a SciKit-learn metric string.
+
+    Returns
+    -------
+    array-like
+        The normalized distance matrix.
+    """
 
     #Check to see if it is a function
     if callable(distance_measure):
@@ -271,13 +280,22 @@ class SPUD:
                                             <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
       """
-      Returns the classification score by training on one domain and predicting on the the other.
-      This will test on both domains, and return the average score.
-      
-      Parameters:
-        :embedding: the manifold alignment embedding. 
-        :Labels: a concatenated list of labels for domain A and labels for domain B
-        :knn_args: the key word arguments for the KNeighborsClassifier."""
+      Returns the classification score by training on one domain and predicting on the other.
+
+      Parameters
+      ----------
+      embedding : array-like
+          The embedding of the data.
+      Labels : tuple of array-like
+          The labels for the two domains.
+      knn_args : dict, optional
+          Arguments for the k-nearest neighbors classifier.
+
+      Returns
+      -------
+      float
+          The classification score.
+      """
 
       (labels1, labels2) = Labels
 
@@ -295,36 +313,48 @@ class SPUD:
       return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
       
   def FOSCTTM(self, off_diagonal): 
-        """
-        FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
-        
-        Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
-        to each other through the alignment process. If a method perfectly aligns all corresponding 
-        points, the average FOSCTTM score would be 0. 
+      """
+      FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
 
-        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
-        of the block matrix. 
-        """
-        n1, n2 = np.shape(off_diagonal)
-        if n1 != n2:
-            raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
+      Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
+      to each other through the alignment process. If a method perfectly aligns all corresponding 
+      points, the average FOSCTTM score would be 0.
 
-        dists = off_diagonal
+      Parameters
+      ----------
+      off_diagonal : array-like
+          Should be either off-diagonal portion (that represents mapping from one domain to the other)
+          of the block matrix.
 
-        nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
-        nn.fit(dists)
+      Returns
+      -------
+      float
+          The average FOSCTTM score.
+      """
+      
+      n1, n2 = np.shape(off_diagonal)
+      if n1 != n2:
+          raise AssertionError('FOSCTTM only works with a one-to-one correspondence. ')
 
-        _, kneighbors = nn.kneighbors(dists)
+      dists = off_diagonal
 
-        return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
+      nn = NearestNeighbors(n_neighbors = n1, metric = 'precomputed')
+      nn.fit(dists)
+
+      _, kneighbors = nn.kneighbors(dists)
+
+      return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
 
   """                                       <><><><><><><><><><><><><><><><><><><><><>     
                                                       PRIMARY FUNCTIONS BELOW
                                             <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def merge_graphs(self):
         """
-        Creates a new graph from graphs A and B creating edges between corresponding points
-        using the known anchors.
+        Creates a new graph (called graphAB) from graphs A and B using the known_anchors,
+        adding an edge set with weight of 1 (as it is a similarity measure).
+
+        Returns:
+            numpy.ndarray: The kernel array of graphAB.
         """
 
         #Merge the two graphs together
@@ -340,6 +370,15 @@ class SPUD:
   def get_off_diagonal_distances(self):
     """
     Calculates the off-diagonal by finding the closest anchors to each other.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    array-like
+        The off-diagonal distance matrix.
     """
 
     #The algorithm uses the kernals for speed and efficiency (so we don't waste time calculating similarities twice.)
@@ -401,10 +440,16 @@ class SPUD:
   def get_block(self):
     """
     Returns a transformed and normalized block.
-    
-    Parameters:
-      :graph: should be a graph that has merged together domains A and B.
-      
+
+    Parameters
+    ----------
+    graph : Graph
+        A graph that has merged together domains A and B.
+
+    Returns
+    -------
+    array-like
+        The transformed and normalized block.
     """
 
     #Find the off_diagonal block depending on our method
@@ -494,18 +539,23 @@ class SPUD:
     plt.show()
 
   def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
-        """A useful visualization function to veiw the embedding.
-        
-        Arguments:
-            :labels: should be a flattened list of the labels for points in domain A and then domain B. 
-                If set to None, the cross embedding can not be calculated, and all points will be colored
-                the same. 
-            :n_comp: The amount of components or dimensions for the MDS function.
-            :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
-                that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
-            :show_anchors: should be a boolean value. If set to True, it will plot a black square on each point
-                that is an anchor. 
-            :**kwargs: additional key word arguments for sns.scatterplot function.
+        """
+        A useful visualization function to view the embedding.
+
+        Parameters:
+            labels (list, optional): A flattened list of the labels for points in domain A and then domain B.
+                                    If set to None, the cross embedding cannot be calculated, and all points will be colored the same.
+            n_comp (int, optional): The number of components or dimensions for the MDS function.
+            show_lines (bool, optional): If set to True, plots lines connecting the points that correlate to the points in the other domain.
+                                        Assumes a 1 to 1 correspondence.
+            show_anchors (bool, optional): If set to True, plots a black square on each point that is an anchor.
+            show_pred (bool, optional): If set to True, shows labels in Domain B as muted, and then plots a second graph with Domain B
+                                        with its predicted labels.
+            show_legend (bool, optional): If set to True, displays the legend.
+            **kwargs: Additional keyword arguments for sns.scatterplot function.
+
+        Returns:
+            None
         """
 
         FOSCTTM_score, CE_score = self.get_scores(labels)
@@ -594,9 +644,17 @@ class SPUD:
     """
     Returns the FOSCTTM score and Cross_embedding Score. If labels are not provided, the Cross Embedding will be returned as None.
 
-    Parameters:
-        :labels: the labels for the dataset. If labels are not provided, just the FOSCTTM score will be returned.
-        :n_comp: the number of components for the MDS.
+    Parameters
+    ----------
+    labels : array-like, optional
+        The labels for the dataset. If labels are not provided, just the FOSCTTM score will be returned.
+    n_comp : int, optional
+        The number of components for the MDS.
+
+    Returns
+    -------
+    tuple
+        FOSCTTM score and Cross_embedding Score.
     """
 
     #Check to see if we already have created our embedding, else create the embedding.

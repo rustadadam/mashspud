@@ -19,44 +19,43 @@ class MASH: #Manifold Alignment with Diffusion
                  page_rank = "None", IDC = 1, density_normalization = False,
                  verbose = 0, **kwargs):
         """
-        Parameters:
-            :t: the power to which we want to raise our diffusion matrix. If set to 
-                negative 1 or any string, MASH will find the optimal t value.
+    Initialize the MASH class.
 
-            :KNN: should be an integer. Represents the amount of nearest neighbors to 
-                construct the graphs.
-
-            :distance_measure_A: Either a function, "default", "precomputed" or SciKit_learn metric strings for domain A. If it is a function, then it should
-                be formated like my_func(data) and returns a distance measure between points.
-                If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
-                function uses Euclidian distance, but this may manually changed through kwargs assignment.
-                If set to "default" it will use the graph created kernals. 
-
-            :distance_measure_B: Either a function, "default", "precomputed" or SciKit_learn metric strings for domain B. If it is a function, then it should
-                be formated like my_func(data) and returns a distance measure between points.
-                If set to "precomputed", no transformation will occur, and it will apply the data to the graph construction as given. The graph
-                function uses Euclidian distance, but this may manually changed through kwargs assignment.
-                If set to "default" it will use the graph created kernals. 
-
-            :page_rank: Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only 
-                want to apply the Page Ranking algorithm to the off-diagonal matricies, and 'full' 
-                mean we want to apply the page ranking algorithm across the entire block matrix.
-
-            :IDC: stands for Inter-domain correspondence. It is the similarity value for anchors points between domains. Often, it makes sense
-                to set it to be maximal (IDC = 1) although in cases where the assumptions (1: the corresponding points serve as alternative 
-                representations of themselves in the co-domain, and 2: nearby points in one domain should remain close in the other domain) are 
-                deemed too strong, the user may choose to assign the IDC < 1.
-
-            :density_normalization: A boolean value. If set to true, it will apply a density
-                normalization to the joined domains. 
-
-            :DTM: Diffusion Transformation method. Can be set to "hellinger", "kl" or "log"
-
-            :verbose: ints 0,1,2,3. Level 0: no output. Level 1: Output only relating to the changes in the MASH function. Level 2: Outputs the processes as they
-                are completed. Level 3: Outputs time data, and images for the optimization function. 
-
-            :kwargs: Key word arguments for graphtools.Graph functions. 
-         """
+    Parameters
+    ----------
+    t : int or str, optional
+        The power to which we want to raise our diffusion matrix. If set to 
+        -1 or any string, MASH will find the optimal t value.
+    knn : int, optional
+        Represents the number of nearest neighbors to construct the graphs.
+    distance_measure_A : str or callable, optional
+        Either a function, "default", "precomputed" or SciKit-learn metric strings for domain A. If it is a function, 
+        it should be formatted like my_func(data) and return a distance measure between points. If set to "precomputed", 
+        no transformation will occur, and it will apply the data to the graph construction as given. The graph function 
+        compute the distances, but this may be manually changed to use the computed distances unchanged by through kwargs
+        (precomputed = "distances"). If set to "default", it will use the graph-created kernels.
+    distance_measure_B : str or callable, optional
+        Either a function, "default", "precomputed" or SciKit-learn metric strings for domain B. If it is a function, 
+        it should be formatted like my_func(data) and return a distance measure between points. If set to "precomputed", 
+        no transformation will occur, and it will apply the data to the graph construction as given. The graph function 
+        compute the distances, but this may be manually changed to use the computed distances unchanged by through kwargs
+        (precomputed = "distances"). If set to "default", it will use the graph-created kernels.
+    page_rank : str, optional
+        Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only want to apply the Page Ranking 
+        algorithm to the off-diagonal matrices, and 'full' means we want to apply the Page Ranking algorithm across the 
+        entire block matrix.
+    IDC : float, optional
+        Stands for Inter-domain correspondence. It is the similarity value for anchor points between domains. Often, it 
+        makes sense to set it to be maximal (IDC = 1), although in cases where the assumptions (1: the corresponding points 
+        serve as alternative representations of themselves in the co-domain, and 2: nearby points in one domain should remain 
+        close in the other domain) are deemed too strong, the user may choose to assign IDC < 1.
+    density_normalization : bool, optional
+        If set to True, it will apply a density normalization to the joined domains.
+    DTM : str, optional
+        Diffusion Transformation method. Can be set to "hellinger", "kl" or "log".
+    **kwargs : dict, optional
+        Keyword arguments for graphtools.Graph function.
+    """
 
 
         #Store the needed information
@@ -81,11 +80,11 @@ class MASH: #Manifold Alignment with Diffusion
     def fit(self, dataA, dataB, known_anchors):
         """
         Parameters:
-            :DataA: the first domain (or data set). 
-            :DataB: the second domain (or data set). 
-            :Known Anchors: It should be an array shaped (n, 2) where n is the number of
-                corresponding nodes. The first index should be the data point from DataA
-                that corresponds to DataB
+            dataA (np.ndarray): The first domain (or data set).
+            dataB (np.ndarray): The second domain (or data set).
+            known_anchors (np.ndarray): An array shaped (n, 2) where n is the number of
+                corresponding nodes. The first index should be the data point from dataA
+                that corresponds to dataB.
         """
 
         #Print timing data
@@ -126,14 +125,17 @@ class MASH: #Manifold Alignment with Diffusion
         if self.verbose > 0:
             print("Fit process finished. We recommend calling optimize_by_creating_connections.")
 
-
     """                                     <><><><><><><><><><><><><><><><><><><><>     
                                                      HELPER FUNCTIONS BELOW
                                             <><><><><><><><><><><><><><><><><><><><>                                                    """
     
-    def print_time(self, print_statement =  ""):
-        """A function that times the algorithms and returns a string of how long it has been
-       since the function was last called."""
+    def print_time(self, print_statement =  ""):        
+        """
+        Times the algorithms and prints how long it has been since the function was last called.
+
+        Parameters:
+            print_statement (str): A statement to print before the timing information.
+        """
 
         #Only do this if the verbose is higher than 3
         if self.verbose > 2:
@@ -163,7 +165,7 @@ class MASH: #Manifold Alignment with Diffusion
     
     def build_graphs(self):
         """
-        Builds the graph objecy and kernal.
+        Builds the graph objects and kernels for domains A and B.
         """
 
         #------------------------    Build dependencies for domain A    ------------------------    
@@ -217,7 +219,15 @@ class MASH: #Manifold Alignment with Diffusion
             self.print_time(" Time it took to compute kernal B:  ")
     
     def apply_aggregation(self, matrix):
-        """Apply the aggregation function to a powered diffusion operator"""
+        """
+        Apply the aggregation function to a powered diffusion operator.
+
+        Parameters:
+            matrix (np.ndarray): The matrix to which the aggregation function will be applied.
+
+        Returns:
+            np.ndarray: The aggregated matrix.
+        """
         
         #The Hellinger algorithm requires that the matricies have the same shape
         if self.DTM == "hellinger" and self.len_A == self.len_B:
@@ -241,8 +251,18 @@ class MASH: #Manifold Alignment with Diffusion
         return agg_matix
 
     def get_SGDM(self, data, distance_measure):
-        """SGDM - Same Graph Distance Matrix.
-        This returns the normalized distances within each domain."""
+        """
+        SGDM - Same Graph Distance Matrix.
+        This returns the normalized distances within each domain.
+
+        Parameters:
+            data (np.ndarray): The data for which the distance matrix is computed.
+            distance_measure (str or callable): The distance measure to use. Can be a string for predefined metrics or a callable function.
+
+        Returns:
+            np.ndarray: The normalized distance matrix.
+        """
+
 
         #Check to see if it is a function
         if callable(distance_measure):
@@ -289,7 +309,15 @@ class MASH: #Manifold Alignment with Diffusion
         return self.normalize_0_to_1(dists)
         
     def row_normalize_matrix(self, matrix):
-        """Returns a row normalized matrix"""
+        """
+        Returns a row-normalized matrix.
+
+        Parameters:
+            matrix (np.ndarray): The matrix to be row-normalized.
+
+        Returns:
+            np.ndarray: The row-normalized matrix.
+        """
 
         #Get the sum for each row
         row_sums = matrix.sum(axis=1)
@@ -302,12 +330,13 @@ class MASH: #Manifold Alignment with Diffusion
         Applies the PageRank modifications to the normalized matrix.
 
         Parameters:
-        - matrix: The row-normalized adjacency matrix.
-        - Alpha: the alpha value.
+            matrix (np.ndarray): The row-normalized adjacency matrix.
+            alpha (float): The alpha value for the PageRank algorithm. Default is 0.99.
 
         Returns:
-        - The modified matrix incorporating the damping factor and teleportation.
+            np.ndarray: The modified matrix incorporating the damping factor and teleportation.
         """
+
 
         #Get the shape
         N, M = matrix.shape
@@ -316,9 +345,12 @@ class MASH: #Manifold Alignment with Diffusion
         return alpha * matrix + (1 - alpha) * np.ones((N, M)) / N
 
     def get_similarity_matrix(self, matrix):
-        """Applies adjustments to get the similarity Matrix
-        
-        Returns the similarity matrix"""
+        """
+        Applies adjustments to get the similarity matrix.
+
+        Returns:
+            numpy.ndarray: The similarity matrix.
+        """
 
         #Apply density normalization
         if self.normalize_density:
@@ -334,10 +366,10 @@ class MASH: #Manifold Alignment with Diffusion
         Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
 
         Parameters:
-        matrix (numpy.ndarray): This should be the diffused matrix
+            matrix (numpy.ndarray): This should be the diffused matrix.
 
         Returns:
-        numpy.ndarray: Divergence matrix
+            numpy.ndarray: Divergence matrix.
         """
 
         # Ensure there are no zero values to avoid division by zero
@@ -354,10 +386,10 @@ class MASH: #Manifold Alignment with Diffusion
         Compute the density-normalized kernel matrix.
 
         Parameters:
-        K (numpy.ndarray): The original kernel matrix (n x n).
+            K (numpy.ndarray): The original kernel matrix (n x n).
 
         Returns:
-        numpy.ndarray: The density-normalized kernel matrix (n x n).
+            numpy.ndarray: The density-normalized kernel matrix (n x n).
         """
 
         # Compute the density estimates p by summing the values of each row
@@ -376,14 +408,13 @@ class MASH: #Manifold Alignment with Diffusion
     
     def hellinger_distance_matrix(self, matrix):
         """
-        This compares each row to each other row in the matrix with the Hellinger
-        algorithm -- determining similarities between distributions. 
-        
+        Compare each row to each other row in the matrix with the Hellinger algorithm, determining similarities between distributions.
+
         Parameters:
-        matrix (numpy.ndarray): Matrix for the computation. Is expected to be the block.
-        
+            matrix (numpy.ndarray): Matrix for the computation. Is expected to be the block.
+
         Returns:
-        numpy.ndarray: Distance matrix.
+            numpy.ndarray: Distance matrix.
         """
 
         #Create a single matrix by stacking the two blocks
@@ -405,16 +436,18 @@ class MASH: #Manifold Alignment with Diffusion
         return distances
 
     def find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
-        """A helper function that finds and returns a list of the closest connections and their associated wieghts after alignment.
-            
+        """
+        A helper function that finds and returns a list of the closest connections and their associated weights after alignment.
+
         Parameters:
-            :connection_limit: should be an integer. If set, the function will find no more than the connection amount specified. 
-            :threshold: should be a float.
-                The threshold determines how similar a point has to be to another to be kept as a connection. 
-            :pruned_connections: should be a list formated like (n1, n2) where n1 is a point in Domain A, and n2 is a point in Domain B.
-                The node connections in this list will not be considered for possible connections. 
-            
-        returns the possible connections"""
+            pruned_connections (list): A list formatted like (n1, n2) where n1 is a point in Domain A, and n2 is a point in Domain B.
+                                       The node connections in this list will not be considered for possible connections.
+            connection_limit (int, optional): If set, the function will find no more than the specified number of connections.
+            threshold (float): The threshold determines how similar a point has to be to another to be kept as a connection.
+
+        Returns:
+            numpy.ndarray: The possible connections.
+        """
 
         #Keep Track of known-connections by creating a mask of everywhere we have a connection
         known_connections = self.similarity_matrix > 0
@@ -463,10 +496,14 @@ class MASH: #Manifold Alignment with Diffusion
                                              <><><><><><><><><><><><><><><><><><><><>                                                    """
     
     def merge_graphs(self): 
-        """Creates a new graph (called graphAB) from graphs A and B using the known_anchors,
-        adding an edge set with weight of 1 (as it is a similarity measure).
-        
-        Returns the kernal array of graphAB"""
+        """
+        Creates a new graph (called graphAB) from graphs A and B using the known_anchors,
+        adding an edge set with weight of 1 (as it is a similarity measure). It also connects
+        its corresponding neighbors.
+
+        Returns:
+            numpy.ndarray: The kernel array of graphAB.
+        """
 
         #convert Graphs to Igraphs
         graphA = self.graph_a.to_igraph()
@@ -503,8 +540,16 @@ class MASH: #Manifold Alignment with Diffusion
     
     def get_diffusion(self, matrix, return_projection = True): 
         """
-        Returns the powered diffusion opperator from the given matrix.
-        Also returns the projection matrix from domain A to B, and then the projection matrix from domain B to A. 
+        Returns the powered diffusion operator from the given matrix.
+        Also returns the projection matrix from domain A to B, and then the projection matrix from domain B to A.
+
+        Parameters:
+            matrix (numpy.ndarray): The input matrix.
+            return_projection (bool, optional): Whether to return the projection matrices. Default is True.
+
+        Returns:
+            tuple: If return_projection is True, returns a tuple containing the diffused matrix, domainAB, and domainBA.
+                Otherwise, returns only the diffused matrix.
         """
 
         #Find best T value if t is set to auto
@@ -556,19 +601,18 @@ class MASH: #Manifold Alignment with Diffusion
 
     def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto", hold_out_anchors = []):
         """
-        In an interative process, it gets the potential anchors after alignment, and then recalculates the similarity matrix and 
-        diffusion opperator. It then tests this new alignment, and if it is better, keeps the alignment.
+        In an iterative process, gets the potential anchors after alignment, and then recalculates the similarity matrix and diffusion operator.
+        Tests this new alignment, and if it is better, keeps the alignment.
 
-        Returns True if a new alignment was made, otherwise it returns False
-        
         Parameters:
-            :connection_limit: should be an integer. If set, it will cap out the max amount of anchors found. 
-                Best values to try: 1/10, 1/5, or 10x the length of the data, or None. 
-            :threshold: should be a float. If auto, the algorithm will determine it. It can not be higher than the median value of the dataset.
-                The threshold determines how similar a point has to be to another to be considered an anchor
-            :hold_out_anchors: Should be in the same format as known_anchors. These are used to validate the new alignment. Can be given 
-                anchors already used, but it preforms best if these are unseen anchors. 
-            :epochs: the number of iterations the cycle will go through. 
+            connection_limit (int or str, optional): If set, caps the max amount of anchors found. Best values to try: 1/10, 1/5, or 10x the length of the data, or None.
+            threshold (float or str, optional): If auto, the algorithm will determine it. Cannot be higher than the median value of the dataset.
+                                                Determines how similar a point has to be to another to be considered an anchor.
+            hold_out_anchors (list, optional): Should be in the same format as known_anchors. Used to validate the new alignment. Performs best if these are unseen anchors.
+            epochs (int, optional): The number of iterations the cycle will go through. Default is 3.
+
+        Returns:
+            bool: True if a new alignment was made, otherwise False.
         """
 
         #Create value to return
@@ -768,14 +812,15 @@ class MASH: #Manifold Alignment with Diffusion
                                              <><><><><><><><><><><><><><><><><><><><>                                                    """
     def project_feature(self, predict_with = "A"):
         """
-        Project the the feature values from one domain to the other using the projection matricies. 
-    
-        NOTE: This function is in experimentation. 
+        Project the feature values from one domain to the other using the projection matrices.
 
-        Arguments:
-        predict_with should be which graph data you want to use. 'A' for graph A and 'B' for graph B.
-        
-        Return the predicted features in an array
+        NOTE: This function is in experimentation.
+
+        Parameters:
+            predict_with (str): Specifies which graph data to use. 'A' for graph A and 'B' for graph B.
+
+        Returns:
+            numpy.ndarray: The predicted features in an array.
         """
 
         if predict_with == "A":
@@ -794,9 +839,12 @@ class MASH: #Manifold Alignment with Diffusion
         return predicted_features
     
     def get_merged_data_set(self):
-        """Adds the predicted features to the datasets with the missing features. 
-        Returns a combined dataset that includes the predicted features"""
-
+        """
+        Adds the predicted features to the datasets with the missing features.
+        
+        Returns:
+            numpy.ndarray: A combined dataset that includes the predicted features.
+        """
         #Add the predicted features to each data set
         full_data_A = np.hstack([self.predict_feature(predict = 'A'), self.dataB])
         full_data_B = np.hstack([self.dataA, self.predict_feature(predict = 'B')])
@@ -811,7 +859,7 @@ class MASH: #Manifold Alignment with Diffusion
                                             <><><><><><><><><><><><><><><><><><><><><>                                                    """
     def plot_heat_maps(self):
         """
-        Plots and shows the heat maps for the similarity matrix, powered diffusion opperator,
+        Plots and shows the heat maps for the similarity matrix, powered diffusion operator,
         and projection matrix.
         """
         fig, axes = plt.subplots(1, 3, figsize = (13, 9))
@@ -831,18 +879,23 @@ class MASH: #Manifold Alignment with Diffusion
         plt.show()
 
     def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
-        """A useful visualization function to veiw the embedding.
-        
-        Arguments:
-            :labels: should be a flattened list of the labels for points in domain A and then domain B. 
-                If set to None, the cross embedding can not be calculated, and all points will be colored
-                the same. 
-            :n_comp: The amount of components or dimensions for the MDS function.
-            :show_lines: should be a boolean value. If set to True, it will plot lines connecting the points 
-                that correlate to the points in the other domain. It assumes a 1 to 1 correpondonce. 
-            :show_anchors: should be a boolean value. If set to True, it will plot a black square on each point
-                that is an anchor. 
-            :**kwargs: additional key word arguments for sns.scatterplot function.
+        """
+        A useful visualization function to view the embedding.
+
+        Parameters:
+            labels (list, optional): A flattened list of the labels for points in domain A and then domain B.
+                                    If set to None, the cross embedding cannot be calculated, and all points will be colored the same.
+            n_comp (int, optional): The number of components or dimensions for the MDS function.
+            show_lines (bool, optional): If set to True, plots lines connecting the points that correlate to the points in the other domain.
+                                        Assumes a 1 to 1 correspondence.
+            show_anchors (bool, optional): If set to True, plots a black square on each point that is an anchor.
+            show_pred (bool, optional): If set to True, shows labels in Domain B as muted, and then plots a second graph with Domain B
+                                        with its predicted labels.
+            show_legend (bool, optional): If set to True, displays the legend.
+            **kwargs: Additional keyword arguments for sns.scatterplot function.
+
+        Returns:
+            None
         """
 
         FOSCTTM_score, CE_score = self.get_scores(labels)
@@ -970,9 +1023,17 @@ class MASH: #Manifold Alignment with Diffusion
         """
         Returns the FOSCTTM score and Cross_embedding Score. If labels are not provided, the Cross Embedding will be returned as None.
 
-        Parameters:
-            :labels: the labels for the dataset. If labels are not provided, just the FOSCTTM score will be returned.
-            :n_comp: the number of components for the MDS.
+        Parameters
+        ----------
+        labels : array-like, optional
+            The labels for the dataset. If labels are not provided, just the FOSCTTM score will be returned.
+        n_comp : int, optional
+            The number of components for the MDS.
+
+        Returns
+        -------
+        tuple
+            FOSCTTM score and Cross_embedding Score.
         """
 
         #Check to see if we already have created our embedding, else create the embedding.
@@ -1012,13 +1073,21 @@ class MASH: #Manifold Alignment with Diffusion
     def FOSCTTM(self, off_diagonal): 
         """
         FOSCTTM stands for average Fraction of Samples Closer Than the True Match.
-        
+
         Lower scores indicate better alignment, as similar or corresponding points are mapped closer 
         to each other through the alignment process. If a method perfectly aligns all corresponding 
-        points, the average FOSCTTM score would be 0. 
+        points, the average FOSCTTM score would be 0.
 
-        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
-        of the block matrix. 
+        Parameters
+        ----------
+        off_diagonal : array-like
+            Should be either off-diagonal portion (that represents mapping from one domain to the other)
+            of the block matrix.
+
+        Returns
+        -------
+        float
+            The average FOSCTTM score.
         """
 
         n1, n2 = np.shape(off_diagonal)
@@ -1035,13 +1104,25 @@ class MASH: #Manifold Alignment with Diffusion
         return np.mean([np.where(kneighbors[i, :] == i)[0] / n1 for i in range(n1)])
     
     def partial_FOSCTTM(self, off_diagonal, anchors):
-        """Follows the same format as FOSCTTM.
-        
-        :off_diagonal: should be either off-diagonal portion (that represents mapping from one domain to the other)
-        of the block matrix. 
-        
+        """
+        Follows the same format as FOSCTTM.
+
         This calculates only a subset of points. It is intended to be used with hold-out anchors to help 
-        us gauge whether new connections yield in a better alignment."""
+        us gauge whether new connections yield in a better alignment.
+
+        Parameters
+        ----------
+        off_diagonal : array-like
+            Should be either off-diagonal portion (that represents mapping from one domain to the other)
+            of the block matrix.
+        anchors : list of tuples
+            List of anchor points to calculate the partial FOSCTTM score.
+
+        Returns
+        -------
+        float
+            The average partial FOSCTTM score.
+        """
 
         n1, n2 = np.shape(off_diagonal)
         if n1 != n2:
@@ -1058,13 +1139,22 @@ class MASH: #Manifold Alignment with Diffusion
     
     def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
         """
-        Returns the classification score by training on one domain and predicting on the the other.
-        This will test on both domains, and return the average score.
-        
-        Parameters:
-            :embedding: the manifold alignment embedding. 
-            :Labels: a concatenated list of labels for domain A and labels for domain B
-            :knn_args: the key word arguments for the KNeighborsClassifier."""
+        Returns the classification score by training on one domain and predicting on the other.
+
+        Parameters
+        ----------
+        embedding : array-like
+            The embedding of the data.
+        Labels : tuple of array-like
+            The labels for the two domains.
+        knn_args : dict, optional
+            Arguments for the k-nearest neighbors classifier.
+
+        Returns
+        -------
+        float
+            The classification score.
+        """
 
         (labels1, labels2) = Labels
 
