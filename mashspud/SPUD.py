@@ -36,7 +36,7 @@ class SPUD:
         knn : int or str, optional
             Number of nearest neighbors for graph construction. If "connect", ensures graph connection.
         OD_method : str, optional
-            Off-diagonal method. Options are "abs", "mean", or "default".
+            Off-diagonal method. Options are "absolute_distance", "mean", or "default".
         agg_method : str or float, optional
             Method to adjust off-diagonal blocks in alignment. Options are 'sqrt', 'log', any float, or 'None'.
         IDC : float, optional
@@ -135,7 +135,7 @@ class SPUD:
         if self.OD_method == "default":
 
           if self.verbose > 0 and self.len_A > 1500:
-             raise ResourceWarning("Computing off-diagonal blocks will be exspensive. Consider setting OD_method to 'mean' or 'abs' for faster computation time.")
+             raise ResourceWarning("Computing off-diagonal blocks will be exspensive. Consider setting OD_method to 'mean' or 'absolute_distance' for faster computation time.")
              
           self.print_time()
           self.graphAB = self.merge_graphs()
@@ -412,7 +412,7 @@ class SPUD:
       raise RuntimeError(f"Did not understand the overide method: {self.overide_method}. Please use 'distances' (or 'none'), 'nama', 'similarities', or 'jaccard'")
 
 
-    """Preform the absolute value and mean methods"""
+    """Preform the absolute_distance and mean methods"""
 
     #Take the mean of each one first, then select.
     anchor_dists_A = get_triangular_mean(*index_triangular(matrixA, columns = self.known_anchors[:, 0], return_indices=True)) 
@@ -422,7 +422,7 @@ class SPUD:
     anchor_dists_A = np.repeat(anchor_dists_A.astype(self.float_precision), repeats= self.len_B)
     anchor_dists_B = np.tile(anchor_dists_B.astype(self.float_precision), self.len_A)
 
-    if self.OD_method == "abs":
+    if self.OD_method == "absolute_distance":
 
       #Convert it to the square matrix. NOTE: We chose not to convert this back into a triangular. If memory is a concern, we recommend you add "reconstruct triagular" method here and adjust the code accordingly.
       off_diagonal = np.reshape(np.abs(anchor_dists_A - anchor_dists_B), newshape=(self.len_A, self.len_B))
@@ -433,7 +433,7 @@ class SPUD:
       off_diagonal = np.reshape((anchor_dists_A + anchor_dists_B)/2, newshape=(self.len_A, self.len_B))
 
     else:
-       raise RuntimeError("Did not understand your input for OD_method (Off-Diagonal method). Please use 'mean', 'abs', or 'default'.")
+       raise RuntimeError("Did not understand your input for OD_method (Off-Diagonal method). Please use 'mean', 'absolute_distance', or 'default'.")
              
     return off_diagonal
 
