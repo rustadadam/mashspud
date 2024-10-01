@@ -38,7 +38,7 @@ iris_spud.plot_emb(labels = iris_labels)
 ![Iris embedding](iris_embedding.png)
 
 ## Citations 
-(We can figure out later)
+View on the paper. 
 
 ## Authors
 - Rhodes, Jake
