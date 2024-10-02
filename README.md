@@ -8,7 +8,7 @@ Created Sept, 2024.
 To install the `mashspud` package, run the following command:
 
 ```bash
-pip install https://github.com/rustadadam/mashspud.git
+pip install git+https://github.com/rustadadam/mashspud.git
 ```
 
 ## Linked Paper
