@@ -10,7 +10,7 @@ from itertools import takewhile
 import matplotlib.pyplot as plt
 from sklearn.manifold import MDS
 from scipy.spatial.distance import pdist, squareform, _METRICS
-from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
+from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from time import time
 
 
@@ -898,7 +898,11 @@ class MASH: #Manifold Alignment with Diffusion
             None
         """
 
-        FOSCTTM_score, CE_score = self.get_scores(labels)
+        #Add show_legend to kwargs
+        if "legend" not in kwargs.keys():
+           kwargs["legend"] = show_legend
+
+        FOSCTTM_score, CE_score = self.get_scores(labels, n_comp = n_comp)
 
         print(f"Cross Embedding score: {CE_score}")
         print(f"Fraction of Samples Closest to thier Match: {FOSCTTM_score}")
@@ -951,7 +955,7 @@ class MASH: #Manifold Alignment with Diffusion
             styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
 
             #Plot the black triangles or circles on the correct points
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black")
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2, linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black", **kwargs)
         
         #Show plot
         plt.show()
@@ -1047,8 +1051,8 @@ class MASH: #Manifold Alignment with Diffusion
         #Check to make sure we have labels
         if type(labels)!= type(None):
             #Seperate the labels into their respective domains
-            first_labels = labels[:self.len_A]
-            second_labels = labels[self.len_A:]
+            first_labels = np.array(labels[:self.len_A])
+            second_labels = np.array(labels[self.len_A:])
 
             #Calculate Cross Embedding Score
             try: 
@@ -1138,36 +1142,47 @@ class MASH: #Manifold Alignment with Diffusion
         return np.mean([np.where(kneighbors[i[0], :] == i[1])[0] / n1 for i in anchors])
     
     def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
-        """
-        Returns the classification score by training on one domain and predicting on the other.
+      """
+      Returns the classification or regression score by training on one domain and predicting on the other.
 
-        Parameters
-        ----------
-        embedding : array-like
-            The embedding of the data.
-        Labels : tuple of array-like
-            The labels for the two domains.
-        knn_args : dict, optional
-            Arguments for the k-nearest neighbors classifier.
+      Parameters
+      ----------
+      embedding : array-like
+          The embedding of the data.
+      Labels : tuple of array-like
+          The labels for the two domains.
+      knn_args : dict, optional
+          Arguments for the k-nearest neighbors classifier.
 
-        Returns
-        -------
-        float
-            The classification score.
-        """
+      Returns
+      -------
+      float
+          The cross_embedding_knn score.
+      """
 
-        (labels1, labels2) = Labels
+      (labels1, labels2) = Labels
 
-        n1 = len(labels1)
+      n1 = len(labels1)
 
-        #initialize the model
-        knn = KNeighborsClassifier(**knn_args)
+      # Determine if the task is classification or regression
+      if np.issubdtype(labels1.dtype, np.integer):
+          # Classification
+          knn = KNeighborsClassifier(**knn_args)
 
-        #Fit and score predicting from domain A to domain B
-        knn.fit(embedding[:n1, :], labels1)
-        score1 =  knn.score(embedding[n1:, :], labels2)
+          if self.verbose > 2:
+             print("Calculating the classification Score.")
+      else:
+          # Regression
+          knn = KNeighborsRegressor(weights = "distance", **knn_args)
 
-        #Fit and score predicting from domain B to domain A, and then return the average value
-        knn.fit(embedding[n1:, :], labels2)
-        return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
+          if self.verbose > 2:
+             print("Calculating the R squared score.")
+
+      #Fit and score predicting from domain A to domain B
+      knn.fit(embedding[:n1, :], labels1)
+      score1 =  knn.score(embedding[n1:, :], labels2)
+
+      #Fit and score predicting from domain B to domain A, and then return the average value
+      knn.fit(embedding[n1:, :], labels2)
+      return np.mean([score1, knn.score(embedding[:n1, :], labels1)])
 

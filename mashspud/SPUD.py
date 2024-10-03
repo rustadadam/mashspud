@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import igraph as ig
 from sklearn.manifold import MDS
-from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier
+from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from .triangular_helper import *
 
 #Additional Libraries to support plotting and verbose levels
@@ -46,7 +46,7 @@ class SPUD:
         float_precision : dtype, optional
             Precision of floating-point numbers.
         verbose : int or float, optional
-            Level of verbosity for output.
+            Level of verbosity for output. Expected values are 0,1,2,3,4.
         **kwargs : dict, optional
             Additional keyword arguments for the graphtools.Graph function.
         """
@@ -280,7 +280,7 @@ class SPUD:
                                             <><><><><><><><><><><><><><><><><><><><><>                                                    """
   def cross_embedding_knn(self, embedding, Labels, knn_args = {'n_neighbors': 4}):
       """
-      Returns the classification score by training on one domain and predicting on the other.
+      Returns the classification or regression score by training on one domain and predicting on the other.
 
       Parameters
       ----------
@@ -294,15 +294,26 @@ class SPUD:
       Returns
       -------
       float
-          The classification score.
+          The cross_embedding_knn score.
       """
 
       (labels1, labels2) = Labels
 
       n1 = len(labels1)
 
-      #initialize the model
-      knn = KNeighborsClassifier(**knn_args)
+      # Determine if the task is classification or regression
+      if np.issubdtype(labels1.dtype, np.integer):
+          # Classification
+          knn = KNeighborsClassifier(**knn_args)
+
+          if self.verbose > 2:
+             print("Calculating the classification Score.")
+      else:
+          # Regression
+          knn = KNeighborsRegressor(weights = "distance", **knn_args)
+
+          if self.verbose > 2:
+             print("Calculating the R squared score.")
 
       #Fit and score predicting from domain A to domain B
       knn.fit(embedding[:n1, :], labels1)
@@ -558,7 +569,11 @@ class SPUD:
             None
         """
 
-        FOSCTTM_score, CE_score = self.get_scores(labels)
+        #Add show_legend to kwargs
+        if "legend" not in kwargs.keys():
+           kwargs["legend"] = show_legend
+
+        FOSCTTM_score, CE_score = self.get_scores(labels, n_comp = n_comp)
 
         print(f"Cross Embedding score: {CE_score}")
         print(f"Fraction of Samples Closest to thier Match: {FOSCTTM_score}")
@@ -591,7 +606,7 @@ class SPUD:
         plt.yticks(fontsize=16)
         
         if show_legend:
-            plt.legend()
+          plt.legend()
 
         #To plot line connections
         if show_lines:
@@ -614,7 +629,7 @@ class SPUD:
             styles2 = ['Domain A' if i % 2 == 0 else 'Domain B' for i in range(len(self.known_anchors)*2)]
 
             #Plot the black triangles or circles on the correct points
-            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2,  linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black")
+            sns.scatterplot(x = np.array(self.emb[self.known_anchors_adjusted, 0]).flatten(), y = np.array(self.emb[self.known_anchors_adjusted, 1]).flatten(), style = styles2,  linewidth = 2, markers= {"Domain A": "x", "Domain B" : "+"}, s = 45, color = "black", **kwargs)
 
         #Show plot
         plt.show()
@@ -668,8 +683,8 @@ class SPUD:
     #Check to make sure we have labels
     if type(labels)!= type(None):
         #Seperate the labels into their respective domains
-        first_labels = labels[:self.len_A]
-        second_labels = labels[self.len_A:]
+        first_labels = np.array(labels[:self.len_A])
+        second_labels = np.array(labels[self.len_A:])
 
         #Calculate Cross Embedding Score
         try: 
