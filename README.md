@@ -11,10 +11,10 @@ To install the `mashspud` package, run the following command:
 pip install git+https://github.com/rustadadam/mashspud.git
 ```
 
-## Linked Paper
+<!-- ## Linked Paper
 https://www.overleaf.com/project/660ad3600ce0d5ec71338821
 
-Also view as included in the repository as GDI.pdf.
+Also view as included in the repository as GDI.pdf. -->
 
 ## Code Example
 Below is a quick code example of how to use SPUD from the `mashspud` package. The code implementation to MASH is similar. You can view full demonstrations of both MASH and SPUD in their respective deomnstration notebook files.  
@@ -38,8 +38,8 @@ iris_spud.plot_emb(labels = iris_labels)
 ```
 ![Iris embedding](iris_embedding.png)
 
-## Citations 
-View on the paper. 
+<!-- ## Citations 
+View on the paper. -->
 
 ## Authors
 - Rhodes, Jake
