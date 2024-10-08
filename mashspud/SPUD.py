@@ -70,12 +70,17 @@ class SPUD:
         if "random_state" not in self.kwargs.keys():
             self.kwargs["random_state"] = 42
 
+        #Set precomputed to be none if override method is set
+        if self.overide_method != "none":
+          if "precomputed" not in self.kwargs.keys():
+              self.kwargs["precomputed"] = "distance"
+
         #Adjust the values to work together
         if self.overide_method != "none" and self.OD_method == "default":
           if self.verbose > 0:
-             print(f"Setting the off-diagonal method (OD_method) to 'mean' to be compatible with {self.overide_method} method.")
+             print(f"Setting the off-diagonal method (OD_method) to 'absolute_distance' to be compatible with {self.overide_method} method.")
           
-          self.OD_method = "mean"
+          self.OD_method = "absolute_distance"
 
   def fit(self, dataA, dataB, known_anchors):
         """
@@ -124,8 +129,12 @@ class SPUD:
           self.graphA = graphtools.Graph(reconstruct_symmetric(self.distsA), knn = self.knn, knn_max= self.knn, **self.kwargs)
           self.graphB = graphtools.Graph(reconstruct_symmetric(self.distsB), knn = self.knn, knn_max= self.knn, **self.kwargs)
 
-          self.kernalsA = get_triangular(self.graphA.K.toarray())
-          self.kernalsB = get_triangular(self.graphB.K.toarray())
+          if "precomputed" not in self.kwargs.keys():
+            self.kernalsA = get_triangular(self.graphA.K.toarray())
+            self.kernalsB = get_triangular(self.graphB.K.toarray())
+          else:
+            self.kernalsA = get_triangular(self.graphA.K)
+            self.kernalsB = get_triangular(self.graphB.K)
 
           self.graphA = self.graphA.to_igraph()
           self.graphB = self.graphB.to_igraph()
