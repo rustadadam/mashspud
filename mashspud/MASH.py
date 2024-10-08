@@ -1,4 +1,4 @@
-#MASH (Manifold Alignment with Diffusion)
+#MASH (Manifold Alignment via Stochastic Hopping)
 
 #Import the needed libraries
 import graphtools
