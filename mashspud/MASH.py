@@ -57,7 +57,6 @@ class MASH: #Manifold Alignment with Diffusion
         Keyword arguments for graphtools.Graph function.
     """
 
-
         #Store the needed information
         self.t = t
         self.knn = knn
@@ -599,7 +598,7 @@ class MASH: #Manifold Alignment with Diffusion
         else:
             return diffused
 
-    def optimize_by_creating_connections(self, epochs = 3, threshold = "auto", connection_limit = "auto", hold_out_anchors = []):
+    def optimize_by_creating_connections(self, epochs = 100, threshold = "auto", connection_limit = "auto", hold_out_anchors = []):
         """
         In an iterative process, gets the potential anchors after alignment, and then recalculates the similarity matrix and diffusion operator.
         Tests this new alignment, and if it is better, keeps the alignment.
