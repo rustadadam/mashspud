@@ -583,8 +583,9 @@ class SPUD:
         if "legend" not in kwargs.keys():
            kwargs["legend"] = show_legend
 
-        FOSCTTM_score, CE_score = self.get_scores(labels, n_comp = n_comp)
+        FOSCTTM_score, CE_score, rf_score = self.get_scores(labels, n_comp = n_comp)
 
+        print(f"RF score on full embedding: {rf_score}")
         print(f"Cross Embedding score: {CE_score}")
         print(f"Fraction of Samples Closest to thier Match: {FOSCTTM_score}")
 
@@ -713,7 +714,6 @@ class SPUD:
 
     #Fit it for Data A and get proximities
     rf_class.fit(self.emb, y = labels)
-    
 
     #Calculate FOSCTTM score
     try:    
