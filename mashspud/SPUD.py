@@ -13,6 +13,7 @@ import igraph as ig
 from sklearn.manifold import MDS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from .triangular_helper import *
+from Helpers.rfgap import RFGAP
 
 #Additional Libraries to support plotting and verbose levels
 from time import time
@@ -665,6 +666,7 @@ class SPUD:
         self.print_time("Time it took complete the plots: ")
 
   def get_scores(self, labels = None, n_comp = 2):
+
     """
     Returns the FOSCTTM score and Cross_embedding Score. If labels are not provided, the Cross Embedding will be returned as None.
 
@@ -703,10 +705,20 @@ class SPUD:
     else:
         CE_score = None
 
+    #RF Gap trained on full embedding
+    if type(labels[0]) != int:
+        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+    else:
+        rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+
+    #Fit it for Data A and get proximities
+    rf_class.fit(self.emb, y = labels)
+    
+
     #Calculate FOSCTTM score
     try:    
         FOSCTTM_score = self.FOSCTTM(self.block[self.len_A:, :self.len_A])
     except: #This will run if the domains are different shapes
         FOSCTTM_score = None
 
-    return FOSCTTM_score, CE_score
+    return FOSCTTM_score, CE_score, rf_class.oob_score_
