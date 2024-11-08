@@ -12,6 +12,7 @@ from sklearn.manifold import MDS
 from scipy.spatial.distance import pdist, squareform, _METRICS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from time import time
+from Helpers.rfgap import RFGAP
 
 
 class MASH: #Manifold Alignment with Diffusion
@@ -901,10 +902,12 @@ class MASH: #Manifold Alignment with Diffusion
         if "legend" not in kwargs.keys():
            kwargs["legend"] = show_legend
 
-        FOSCTTM_score, CE_score = self.get_scores(labels, n_comp = n_comp)
+        FOSCTTM_score, CE_score, RF_score = self.get_scores(labels, n_comp = n_comp)
 
         print(f"Cross Embedding score: {CE_score}")
         print(f"Fraction of Samples Closest to thier Match: {FOSCTTM_score}")
+        print(f"RF score trained on full Embedding: {RF_score}")
+
 
         if type(labels) == type(None):
             #Set all labels to be the same
@@ -1061,13 +1064,22 @@ class MASH: #Manifold Alignment with Diffusion
         else:
             CE_score = None
 
+        #RF Gap trained on full embedding
+        if type(labels[0]) != int:
+            rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+        else:
+            rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+
+        #Fit it for Data A and get proximities
+        rf_class.fit(self.emb, y = labels)
+
         #Calculate FOSCTTM score
         try:    
             FOSCTTM_score = self.FOSCTTM(self.int_diff_dist[self.len_A:, :self.len_A])
         except: #This will run if the domains are different shapes
             FOSCTTM_score = None
 
-        return FOSCTTM_score, CE_score
+        return FOSCTTM_score, CE_score, rf_class.oob_score_
 
     """                                     <><><><><><><><><><><><><><><><><><><><>     
                                                    EVALUATION FUNCTIONS BELOW
