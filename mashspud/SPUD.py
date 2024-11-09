@@ -13,7 +13,7 @@ import igraph as ig
 from sklearn.manifold import MDS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from .triangular_helper import *
-from Helpers.rfgap import RFGAP
+from .RF_GAP import RFGAP
 
 #Additional Libraries to support plotting and verbose levels
 from time import time

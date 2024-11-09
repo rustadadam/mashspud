@@ -12,7 +12,7 @@ from sklearn.manifold import MDS
 from scipy.spatial.distance import pdist, squareform, _METRICS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from time import time
-from Helpers.rfgap import RFGAP
+from .RF_GAP import RFGAP
 
 
 class MASH: #Manifold Alignment with Diffusion
