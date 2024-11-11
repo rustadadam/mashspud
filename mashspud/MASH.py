@@ -99,13 +99,13 @@ class MASH: #Manifold Alignment with Diffusion
         self.len_A = len(self.dataA)
         self.len_B = len(self.dataB)
 
-        #Build graphs and kernals
-        self.build_graphs()
-
         self.known_anchors = known_anchors
             
         #Change known_anchors to correspond to off diagonal matricies
         self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+        #Build graphs and kernals
+        self.build_graphs()
 
         #Connect the graphs
         self.print_time()
@@ -1065,11 +1065,15 @@ class MASH: #Manifold Alignment with Diffusion
             CE_score = None
 
         #RF Gap trained on full embedding
-        if type(labels[0]) != int:
-            rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
-        else:
+        if np.issubdtype(first_labels[0].dtype, np.integer):
             rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
-
+            if self.verbose > 1:
+                print("RF-GAP score is accuracy")
+        else:
+            rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+            if self.verbose > 1:
+                print("RF-GAP score is R^2")
+            
         #Fit it for Data A and get proximities
         rf_class.fit(self.emb, y = labels)
 

@@ -707,10 +707,14 @@ class SPUD:
         CE_score = None
 
     #RF Gap trained on full embedding
-    if type(labels[0]) != int:
-        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
-    else:
+    if np.issubdtype(first_labels[0].dtype, np.integer):
         rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+        if self.verbose > 1:
+           print("RF-GAP score is accuracy")
+    else:
+        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+        if self.verbose > 1:
+           print("RF-GAP score is R^2")
 
     #Fit it for Data A and get proximities
     rf_class.fit(self.emb, y = labels)
