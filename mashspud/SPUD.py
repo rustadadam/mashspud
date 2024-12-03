@@ -559,14 +559,14 @@ class SPUD:
 
     plt.show()
 
-  def plot_emb(self, labels = None, n_comp = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
+  def plot_emb(self, labels = None, n_components = 2, show_lines = True, show_anchors = True, show_pred = False, show_legend = True, **kwargs): 
         """
         A useful visualization function to view the embedding.
 
         Parameters:
             labels (list, optional): A flattened list of the labels for points in domain A and then domain B.
                                     If set to None, the cross embedding cannot be calculated, and all points will be colored the same.
-            n_comp (int, optional): The number of components or dimensions for the MDS function.
+            n_components (int, optional): The number of components or dimensions for the MDS function.
             show_lines (bool, optional): If set to True, plots lines connecting the points that correlate to the points in the other domain.
                                         Assumes a 1 to 1 correspondence.
             show_anchors (bool, optional): If set to True, plots a black square on each point that is an anchor.
@@ -583,7 +583,7 @@ class SPUD:
         if "legend" not in kwargs.keys():
            kwargs["legend"] = show_legend
 
-        FOSCTTM_score, CE_score, rf_score = self.get_scores(labels, n_comp = n_comp)
+        FOSCTTM_score, CE_score, rf_score = self.get_scores(labels, n_components = n_components)
 
         print(f"RF score on full embedding: {rf_score}")
         print(f"Cross Embedding score: {CE_score}")
@@ -666,7 +666,7 @@ class SPUD:
 
         self.print_time("Time it took complete the plots: ")
 
-  def get_scores(self, labels = None, n_comp = 2):
+  def get_scores(self, labels = None, **mds_kwargs):
 
     """
     Returns the FOSCTTM score and Cross_embedding Score. If labels are not provided, the Cross Embedding will be returned as None.
@@ -675,8 +675,8 @@ class SPUD:
     ----------
     labels : array-like, optional
         The labels for the dataset. If labels are not provided, just the FOSCTTM score will be returned.
-    n_comp : int, optional
-        The number of components for the MDS.
+    **mds_kwargs : dict, optional
+        Key word arguments for MDS.
 
     Returns
     -------
@@ -688,7 +688,7 @@ class SPUD:
     if type(self.emb) == type(None):
         #Convert to a MDS
         self.print_time()
-        mds = MDS(metric=True, dissimilarity = 'precomputed', n_components= n_comp, random_state = self.kwargs["random_state"])
+        mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.kwargs["random_state"], **mds_kwargs)
         self.emb = mds.fit_transform(self.block)
         self.print_time("Time it took to calculate the embedding: ")
 
