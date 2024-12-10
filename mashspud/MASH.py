@@ -5,19 +5,20 @@ import graphtools
 import numpy as np
 from pandas import Categorical
 import seaborn as sns
-from .vne import find_optimal_t #TODO: Check this out
+from .vne import find_optimal_t 
 from itertools import takewhile
 import matplotlib.pyplot as plt
 from sklearn.manifold import MDS
 from scipy.spatial.distance import pdist, squareform, _METRICS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from time import time
+from memory_profiler import profile
 from .RF_GAP import RFGAP
 
 
 class MASH: #Manifold Alignment with Diffusion
     def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", DTM = "log",
-                 page_rank = "None", IDC = 1, density_normalization = False,
+                 page_rank = "None", IDC = 1, density_normalization = False, chunk_size = 100,
                  verbose = 0, **kwargs):
         """
     Initialize the MASH class.
@@ -54,6 +55,9 @@ class MASH: #Manifold Alignment with Diffusion
         If set to True, it will apply a density normalization to the joined domains.
     DTM : str, optional
         Diffusion Transformation method. Can be set to "hellinger", "kl" or "log".
+    chunk_size : int, optional
+        To save memory on the KL and Hellinger operations (relating to the DTM), it chunks the process rather than vectorizing
+        all the code at once. It determines how many rows will be in each chunk. 
     **kwargs : dict, optional
         Keyword arguments for graphtools.Graph function.
     """
@@ -69,6 +73,7 @@ class MASH: #Manifold Alignment with Diffusion
         self.verbose = verbose
         self.kwargs = kwargs
         self.IDC = IDC
+        self.chunk_size = chunk_size
 
         #Ensure there is a random state
         if "random_state" not in self.kwargs.keys():
@@ -232,11 +237,15 @@ class MASH: #Manifold Alignment with Diffusion
         #The Hellinger algorithm requires that the matricies have the same shape
         if self.DTM == "hellinger" and self.len_A == self.len_B:
             #Apply the hellinger process
-            agg_matix = self.hellinger_distance_matrix(matrix)
+            agg_matix = self.hellinger_distance_matrix_optimized(matrix, chunk_size=self.chunk_size)
 
         elif self.DTM == "kl" and self.len_A == self.len_B:
             #Apply the hellinger process
             agg_matix = self.kl_divergence_matrix(matrix)
+
+        elif self.DTM == "kl_optimized" and self.len_A == self.len_B:
+            #Apply the hellinger process
+            agg_matix = self.kl_divergence_matrix_optimized(matrix, chunk_size=self.chunk_size)
 
         else:
             if (self.DTM == "hellinger" or self.DTM == "kl") and self.verbose > 0:
@@ -361,6 +370,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         return matrix
 
+    @profile #Determine memory constraints when run with command: -m memory_profiler
     def kl_divergence_matrix(self, matrix):
         """
         Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
@@ -381,6 +391,60 @@ class MASH: #Manifold Alignment with Diffusion
         #Return the block matrix!
         return matrix 
     
+    @profile
+    def kl_divergence_matrix_optimized(self, matrix, chunk_size=100):
+        """
+        Calculate the KL divergence matrix in a memory-efficient way.
+
+        Parameters:
+            matrix (numpy.ndarray): Input diffused matrix.
+            chunk_size (int): Number of rows to process in each chunk.
+
+        Returns:
+            numpy.ndarray: Normalized, symmetric KL divergence matrix.
+        """
+
+        try:
+            # Ensure there are no zero values to avoid division by zero
+            matrix = np.where(matrix == 0, 1e-10, matrix)
+            matrix = matrix / matrix.sum(axis=1, keepdims=True)  # Normalize rows to probabilities
+
+            n = matrix.shape[0]
+            divergence_matrix = np.zeros((n, n), dtype=np.float32)
+
+            # Process rows in chunks
+            for i in range(0, n, chunk_size):
+                chunk = matrix[i:i + chunk_size]
+
+                # Calculate KL divergence only for the chunk
+                for j in range(0, n, chunk_size):  # Compare current chunk with all other chunks
+                    comparison_chunk = matrix[j:j + chunk_size]
+                    kl_divergence_chunk = np.sum(
+                        chunk[:, np.newaxis, :] *
+                        np.log(chunk[:, np.newaxis, :] / comparison_chunk[np.newaxis, :, :]), 
+                        axis=2
+                    )
+
+                    # Store results in the correct submatrix
+                    divergence_matrix[i:i + chunk_size, j:j + chunk_size] = kl_divergence_chunk
+
+        except Exception as e:
+            # Prevent infinite recursion
+            if chunk_size < 25:
+                raise Exception("Memory Error. KL Divergence chunk size is less than 25 and memory is still exceeded.")
+
+            print(f"Error: {e}\n\nRetrying with smaller chunk size.")
+            return self.kl_divergence_matrix_optimized(matrix, int(chunk_size / 1.5))
+
+        # Symmetrize the divergence matrix
+        divergence_matrix = (divergence_matrix + divergence_matrix.T) / 2
+
+        # Normalize the matrix
+        divergence_matrix = self.normalize_0_to_1(divergence_matrix)
+
+        return divergence_matrix
+
+
     def density_normalized_kernel(self, K):
         """
         Compute the density-normalized kernel matrix.
@@ -406,34 +470,59 @@ class MASH: #Manifold Alignment with Diffusion
         
         return K_norm
     
-    def hellinger_distance_matrix(self, matrix):
+    @profile #Determine memory constraints when run with command: -m memory_profiler
+    def hellinger_distance_matrix_optimized(self, matrix, chunk_size=100):
         """
-        Compare each row to each other row in the matrix with the Hellinger algorithm, determining similarities between distributions.
+        Compare each row to each other row in the matrix using the Hellinger distance, 
+        optimized to minimize memory usage with chunking.
 
         Parameters:
-            matrix (numpy.ndarray): Matrix for the computation. Is expected to be the block.
+            matrix (numpy.ndarray): Input matrix with probability distributions.
+            chunk_size (int): Number of rows to process at a time.
 
         Returns:
-            numpy.ndarray: Distance matrix.
+            numpy.ndarray: Hellinger distance matrix.
         """
 
-        #Create a single matrix by stacking the two blocks
-        matrix = np.vstack([matrix[:self.len_A, :self.len_A], matrix[self.len_A:, self.len_A:]])
+        #If the given chunk size proves to be too big, we can shrink it down
+        try:
+            # Ensure input is normalized to probability distributions
+            matrix = matrix / matrix.sum(axis=1, keepdims=True)
 
-        #Reshape the maticies
-        sqrt_matrix1 = np.sqrt(matrix[:, np.newaxis, :]) #NOTE: This will also take a good amount of memory
-        sqrt_matrix2 = np.sqrt(matrix[np.newaxis, :, :])
+            n = matrix.shape[0]
+            distance_matrix = np.zeros((n, n), dtype=np.float64)  # Preallocate distance matrix
 
-        # Calculate the squared differences
-        squared_diff = (sqrt_matrix1 - sqrt_matrix2) ** 2
+            # Process rows in chunks
+            for i in range(0, n, chunk_size):
+                # Extract chunk of rows
+                chunk = matrix[i:i + chunk_size]
+
+                # Compute sqrt for the chunk
+                sqrt_chunk = np.sqrt(chunk[:, np.newaxis, :])  # Shape: (chunk_size, 1, features)
+
+                # Compute sqrt for the full matrix
+                sqrt_full = np.sqrt(matrix[np.newaxis, :, :])  # Shape: (1, n, features)
+
+                # Calculate squared differences
+                squared_diff = (sqrt_chunk - sqrt_full) ** 2
+
+                # Sum along the feature axis and compute distances
+                sum_squared_diff = np.sum(squared_diff, axis=2)
+                distances = np.sqrt(sum_squared_diff) / np.sqrt(2)
+
+                # Store results in the corresponding rows of the distance matrix
+                distance_matrix[i:i + chunk_size] = distances
+
+            return distance_matrix
         
-        # Sum along the last axis to get the sum of squared differences
-        sum_squared_diff = np.sum(squared_diff, axis=2)
-        
-        # Calculate the Hellinger distances
-        distances = np.sqrt(sum_squared_diff) / np.sqrt(2)
-        
-        return distances
+        except Exception as e:        
+            #To prevent endless loop
+            if chunk_size < 25:
+                raise Exception("Memory Error. KL Divergence chunk size is less than 25 and memory is still exceeded.")
+
+            print(f"Error: {e}\n\nReruning with smaller chunk size")
+            return self.kl_divergence_matrix_optimized(matrix, int(chunk_size/1.5))
+
 
     def find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
         """
@@ -1047,7 +1136,7 @@ class MASH: #Manifold Alignment with Diffusion
             #Convert to a MDS
             self.print_time()
             mds = MDS(metric=True, dissimilarity = 'precomputed', random_state = self.kwargs["random_state"], **mds_kwargs)
-            self.emb = mds.fit_transform(self.block)
+            self.emb = mds.fit_transform(self.int_diff_dist)
             self.print_time("Time it took to calculate the embedding: ")
 
         #Check to make sure we have labels
@@ -1056,6 +1145,19 @@ class MASH: #Manifold Alignment with Diffusion
             first_labels = np.array(labels[:self.len_A])
             second_labels = np.array(labels[self.len_A:])
 
+            #RF Gap trained on full embedding
+            if np.issubdtype(first_labels[0].dtype, np.integer):
+                rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+                if self.verbose > 1:
+                    print("RF-GAP score is accuracy")
+            else:
+                rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+                if self.verbose > 1:
+                    print("RF-GAP score is R^2")
+
+            rf_class.fit(self.emb, y = labels)
+            rf_oob = rf_class.oob_score_
+
             #Calculate Cross Embedding Score
             try: 
                 CE_score = self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})
@@ -1063,19 +1165,7 @@ class MASH: #Manifold Alignment with Diffusion
                 CE_score = None
         else:
             CE_score = None
-
-        #RF Gap trained on full embedding
-        if np.issubdtype(first_labels[0].dtype, np.integer):
-            rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
-            if self.verbose > 1:
-                print("RF-GAP score is accuracy")
-        else:
-            rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
-            if self.verbose > 1:
-                print("RF-GAP score is R^2")
-            
-        #Fit it for Data A and get proximities
-        rf_class.fit(self.emb, y = labels)
+            rf_oob = None
 
         #Calculate FOSCTTM score
         try:    
@@ -1083,7 +1173,7 @@ class MASH: #Manifold Alignment with Diffusion
         except: #This will run if the domains are different shapes
             FOSCTTM_score = None
 
-        return FOSCTTM_score, CE_score, rf_class.oob_score_
+        return FOSCTTM_score, CE_score, rf_oob
 
     """                                     <><><><><><><><><><><><><><><><><><><><>     
                                                    EVALUATION FUNCTIONS BELOW
