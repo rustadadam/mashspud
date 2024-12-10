@@ -698,6 +698,20 @@ class SPUD:
         first_labels = np.array(labels[:self.len_A])
         second_labels = np.array(labels[self.len_A:])
 
+        #RF Gap trained on full embedding
+        if np.issubdtype(first_labels[0].dtype, np.integer):
+            rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+            if self.verbose > 1:
+              print("RF-GAP score is accuracy")
+        else:
+            rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
+            if self.verbose > 1:
+              print("RF-GAP score is R^2")
+
+        #Fit it for Data A and get proximities
+        rf_class.fit(self.emb, y = labels)
+        rf_oob = rf_class.oob_score_
+
         #Calculate Cross Embedding Score
         try: 
             CE_score = self.cross_embedding_knn(self.emb, (first_labels, second_labels), knn_args = {'n_neighbors': 5})
@@ -705,19 +719,8 @@ class SPUD:
             CE_score = None
     else:
         CE_score = None
+        rf_oob = None
 
-    #RF Gap trained on full embedding
-    if np.issubdtype(first_labels[0].dtype, np.integer):
-        rf_class = RFGAP(prediction_type="classification", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
-        if self.verbose > 1:
-           print("RF-GAP score is accuracy")
-    else:
-        rf_class = RFGAP(prediction_type="regression", y=labels, prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True, oob_score = True)
-        if self.verbose > 1:
-           print("RF-GAP score is R^2")
-
-    #Fit it for Data A and get proximities
-    rf_class.fit(self.emb, y = labels)
 
     #Calculate FOSCTTM score
     try:    
@@ -725,4 +728,4 @@ class SPUD:
     except: #This will run if the domains are different shapes
         FOSCTTM_score = None
 
-    return FOSCTTM_score, CE_score, rf_class.oob_score_
+    return FOSCTTM_score, CE_score, rf_oob
