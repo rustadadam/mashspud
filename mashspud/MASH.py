@@ -18,7 +18,7 @@ from .RF_GAP import RFGAP
 
 class MASH: #Manifold Alignment with Diffusion
     def __init__(self, t = -1, knn = 5, distance_measure_A = "default", distance_measure_B = "default", DTM = "log",
-                 page_rank = "None", IDC = 1, density_normalization = False, chunk_size = 100,
+                 page_rank = "None", IDC = 1, density_normalization = False, chunk_size = 500,
                  verbose = 0, **kwargs):
         """
     Initialize the MASH class.
@@ -241,11 +241,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         elif self.DTM == "kl" and self.len_A == self.len_B:
             #Apply the hellinger process
-            agg_matix = self.kl_divergence_matrix(matrix)
-
-        elif self.DTM == "kl_optimized" and self.len_A == self.len_B:
-            #Apply the hellinger process
-            agg_matix = self.kl_divergence_matrix_optimized(matrix, chunk_size=self.chunk_size)
+            agg_matix = self.kl_divergence_matrix(matrix, chunk_size=self.chunk_size)
 
         else:
             if (self.DTM == "hellinger" or self.DTM == "kl") and self.verbose > 0:
@@ -371,28 +367,7 @@ class MASH: #Manifold Alignment with Diffusion
         return matrix
 
     @profile #Determine memory constraints when run with command: -m memory_profiler
-    def kl_divergence_matrix(self, matrix):
-        """
-        Calculate the KL divergence matrix between rows of two matrices in a vectorized manner.
-
-        Parameters:
-            matrix (numpy.ndarray): This should be the diffused matrix.
-
-        Returns:
-            numpy.ndarray: Divergence matrix.
-        """
-
-        # Ensure there are no zero values to avoid division by zero
-        matrix = np.where(matrix == 0, 1e-10, matrix)
-
-        #Normalize and do all the math to preform the KL divergence. #NOTE -> This likely is sucking up a ton of memory
-        matrix = self.normalize_0_to_1(squareform(pdist(np.sum(matrix[:, np.newaxis, :] * np.log(matrix[:, np.newaxis, :] / matrix[np.newaxis, :, :]), axis=2))))
-
-        #Return the block matrix!
-        return matrix 
-    
-    @profile
-    def kl_divergence_matrix_optimized(self, matrix, chunk_size=100):
+    def kl_divergence_matrix(self, matrix, chunk_size=100):
         """
         Calculate the KL divergence matrix in a memory-efficient way.
 
