@@ -12,7 +12,7 @@ from sklearn.manifold import MDS
 from scipy.spatial.distance import pdist, squareform, _METRICS
 from sklearn.neighbors import NearestNeighbors, KNeighborsClassifier, KNeighborsRegressor
 from time import time
-from memory_profiler import profile
+#from memory_profiler import profile
 from .RF_GAP import RFGAP
 
 
@@ -21,46 +21,46 @@ class MASH: #Manifold Alignment with Diffusion
                  page_rank = "None", IDC = 1, density_normalization = False, chunk_size = 500,
                  verbose = 0, **kwargs):
         """
-    Initialize the MASH class.
+        Initialize the MASH class.
 
-    Parameters
-    ----------
-    t : int or str, optional
-        The power to which we want to raise our diffusion matrix. If set to 
-        -1 or any string, MASH will find the optimal t value.
-    knn : int, optional
-        Represents the number of nearest neighbors to construct the graphs.
-    distance_measure_A : str or callable, optional
-        Either a function, "default", "precomputed" or SciKit-learn metric strings for domain A. If it is a function, 
-        it should be formatted like my_func(data) and return a distance measure between points. If set to "precomputed", 
-        no transformation will occur, and it will apply the data to the graph construction as given. The graph function 
-        compute the distances, but this may be manually changed to use the computed distances unchanged by through kwargs
-        (precomputed = "distances"). If set to "default", it will use the graph-created kernels.
-    distance_measure_B : str or callable, optional
-        Either a function, "default", "precomputed" or SciKit-learn metric strings for domain B. If it is a function, 
-        it should be formatted like my_func(data) and return a distance measure between points. If set to "precomputed", 
-        no transformation will occur, and it will apply the data to the graph construction as given. The graph function 
-        compute the distances, but this may be manually changed to use the computed distances unchanged by through kwargs
-        (precomputed = "distances"). If set to "default", it will use the graph-created kernels.
-    page_rank : str, optional
-        Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only want to apply the Page Ranking 
-        algorithm to the off-diagonal matrices, and 'full' means we want to apply the Page Ranking algorithm across the 
-        entire block matrix.
-    IDC : float, optional
-        Stands for Inter-domain correspondence. It is the similarity value for anchor points between domains. Often, it 
-        makes sense to set it to be maximal (IDC = 1), although in cases where the assumptions (1: the corresponding points 
-        serve as alternative representations of themselves in the co-domain, and 2: nearby points in one domain should remain 
-        close in the other domain) are deemed too strong, the user may choose to assign IDC < 1.
-    density_normalization : bool, optional
-        If set to True, it will apply a density normalization to the joined domains.
-    DTM : str, optional
-        Diffusion Transformation method. Can be set to "hellinger", "kl" or "log".
-    chunk_size : int, optional
-        To save memory on the KL and Hellinger operations (relating to the DTM), it chunks the process rather than vectorizing
-        all the code at once. It determines how many rows will be in each chunk. 
-    **kwargs : dict, optional
-        Keyword arguments for graphtools.Graph function.
-    """
+        Parameters
+        ----------
+        t : int or str, optional
+            The power to which we want to raise our diffusion matrix. If set to 
+            -1 or any string, MASH will find the optimal t value.
+        knn : int, optional
+            Represents the number of nearest neighbors to construct the graphs.
+        distance_measure_A : str or callable, optional
+            Either a function, "default", "precomputed" or SciKit-learn metric strings for domain A. If it is a function, 
+            it should be formatted like my_func(data) and return a distance measure between points. If set to "precomputed", 
+            no transformation will occur, and it will apply the data to the graph construction as given. The graph function 
+            compute the distances, but this may be manually changed to use the computed distances unchanged by through kwargs
+            (precomputed = "distances"). If set to "default", it will use the graph-created kernels.
+        distance_measure_B : str or callable, optional
+            Either a function, "default", "precomputed" or SciKit-learn metric strings for domain B. If it is a function, 
+            it should be formatted like my_func(data) and return a distance measure between points. If set to "precomputed", 
+            no transformation will occur, and it will apply the data to the graph construction as given. The graph function 
+            compute the distances, but this may be manually changed to use the computed distances unchanged by through kwargs
+            (precomputed = "distances"). If set to "default", it will use the graph-created kernels.
+        page_rank : str, optional
+            Determines if we want to apply Page Ranking or not. 'off-diagonal' means we only want to apply the Page Ranking 
+            algorithm to the off-diagonal matrices, and 'full' means we want to apply the Page Ranking algorithm across the 
+            entire block matrix.
+        IDC : float, optional
+            Stands for Inter-domain correspondence. It is the similarity value for anchor points between domains. Often, it 
+            makes sense to set it to be maximal (IDC = 1), although in cases where the assumptions (1: the corresponding points 
+            serve as alternative representations of themselves in the co-domain, and 2: nearby points in one domain should remain 
+            close in the other domain) are deemed too strong, the user may choose to assign IDC < 1.
+        density_normalization : bool, optional
+            If set to True, it will apply a density normalization to the joined domains.
+        DTM : str, optional
+            Diffusion Transformation method. Can be set to "hellinger", "kl" or "log".
+        chunk_size : int, optional
+            To save memory on the KL and Hellinger operations (relating to the DTM), it chunks the process rather than vectorizing
+            all the code at once. It determines how many rows will be in each chunk. 
+        **kwargs : dict, optional
+            Keyword arguments for graphtools.Graph function.
+        """
 
         #Store the needed information
         self.t = t
@@ -366,7 +366,7 @@ class MASH: #Manifold Alignment with Diffusion
 
         return matrix
 
-    @profile #Determine memory constraints when run with command: -m memory_profiler
+    #@profile #Determine memory constraints when run with command: -m memory_profiler
     def kl_divergence_matrix(self, matrix, chunk_size=100):
         """
         Calculate the KL divergence matrix in a memory-efficient way.
@@ -445,7 +445,7 @@ class MASH: #Manifold Alignment with Diffusion
         
         return K_norm
     
-    @profile #Determine memory constraints when run with command: -m memory_profiler
+    #@profile #Determine memory constraints when run with command: -m memory_profiler
     def hellinger_distance_matrix_optimized(self, matrix, chunk_size=100):
         """
         Compare each row to each other row in the matrix using the Hellinger distance, 
