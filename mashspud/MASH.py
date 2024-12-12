@@ -872,7 +872,7 @@ class MASH: #Manifold Alignment with Diffusion
         return added_connections
 
     """                                      <><><><><><><><><><><><><><><><><><><><>     
-                                                    PRIMARY FUNCTIONS BELOW
+                                                    PROJECTION FUNCTIONS BELOW
                                              <><><><><><><><><><><><><><><><><><><><>                                                    """
     def project_feature(self, predict_with = "A"):
         """
