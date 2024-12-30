@@ -178,24 +178,24 @@ class MASH: #Manifold Alignment with Diffusion
 
             #Create kernals
             self.print_time()
-            self.kernalsA = self.get_SGDM(self.dataA, self.distance_measure_A)
+            dists = self.get_SGDM(self.dataA, self.distance_measure_A)
             self.print_time(" Time it took to execute SGDM for domain A:  ")
 
             #Create Graphs using our precomputed kernals
             self.print_time()
-            self.graph_a = graphtools.Graph(self.kernalsA, knn = self.knn, knn_max = self.knn, precomputed="distance", **self.kwargs)
+            self.graph_a = graphtools.Graph(dists, knn = self.knn, knn_max = self.knn, precomputed="distance", **self.kwargs)
+            self.kernalsA = self.graph_a.K
             self.print_time(" Time it took to execute the graph for domain A:  ")
 
         else:
             #Create Graphs and allow it to use the normal data
             self.print_time()
-            self.dataA = self.normalize_0_to_1(self.dataA)
-            self.graph_a = graphtools.Graph(self.dataA, knn = self.knn, knn_max = self.knn, **self.kwargs)
+            self.graph_a = graphtools.Graph(self.normalize_0_to_1(self.dataA), knn = self.knn, knn_max = self.knn, **self.kwargs)
             self.print_time(" Time it took to execute the graph for domain A:  ")
 
             #Get the Kernal Data from the graphs
             self.print_time()
-            self.kernalsA  = np.array(self.graph_a.K.toarray())
+            self.kernalsA  = self.graph_a.K.toarray()
             self.print_time(" Time it took to compute kernal A:  ")
 
         #------------------------    Build dependencies for domain B    ------------------------   
@@ -203,24 +203,24 @@ class MASH: #Manifold Alignment with Diffusion
 
             #Create kernals
             self.print_time()
-            self.kernalsB = self.get_SGDM(self.dataB, self.distance_measure_B)
+            dists = self.get_SGDM(self.dataB, self.distance_measure_B)
             self.print_time(" Time it took to execute SGDM for domain B:  ")
 
             #Create Graphs using our precomputed kernals
             self.print_time()
-            self.graph_b = graphtools.Graph(self.kernalsB, knn = self.knn, knn_max = self.knn, precomputed="distance", **self.kwargs)
+            self.graph_b = graphtools.Graph(dists, knn = self.knn, knn_max = self.knn, precomputed="distance", **self.kwargs)
+            self.kernalsB = self.graph_b.K
             self.print_time(" Time it took to execute the graph for domain B:  ")
 
         else:
             #Create Graphs and allow it to use the normal data
             self.print_time()
-            self.dataB = self.normalize_0_to_1(self.dataB)
-            self.graph_b = graphtools.Graph(self.dataB, knn = self.knn, knn_max = self.knn,  **self.kwargs)
+            self.graph_b = graphtools.Graph(self.normalize_0_to_1(self.dataB), knn = self.knn, knn_max = self.knn,  **self.kwargs)
             self.print_time(" Time it took to execute the graph for domain B:  ")
 
             #Get the Kernal Data from the graphs
             self.print_time()
-            self.kernalsB  = np.array(self.graph_b.K.toarray())
+            self.kernalsB  = self.graph_b.K.toarray()
             self.print_time(" Time it took to compute kernal B:  ")
     
     def apply_aggregation(self, matrix):
