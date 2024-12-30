@@ -22,6 +22,46 @@ else:
 
 from sklearn.utils.validation import check_is_fitted
 
+
+"""
+The below function can be passed into SPUD or MASH as a distance function. It will use RF_GAP as similarites.
+"""
+
+def use_rf_similarities(self, tuple):
+    """Creates RF proximities similarities
+       Tuple should be a tuple with position 0 being the data and position 1 being the labels"""
+    
+    if np.issubdtype(np.array(tuple[1]).dtype, np.integer):
+        rf_class = RFGAP(prediction_type="classification", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+    else:
+        rf_class = RFGAP(prediction_type="regression", y=tuple[1], prox_method="rfgap", matrix_type= "dense", triangular=False, non_zero_diagonal=True)
+        
+    #Fit it for Data A
+    rf_class.fit(tuple[0], y = tuple[1])
+
+    #Get promities
+    dataA = rf_class.get_proximities()
+
+    #Reset len_A and other varables
+    if self.len_A == 2:
+        self.len_A = len(tuple[0]) 
+
+        #Change known_anchors to correspond to off diagonal matricies -- We have to change this as its dependent upon A
+        self.known_anchors_adjusted = np.vstack([self.known_anchors.T[0], self.known_anchors.T[1] + self.len_A]).T
+
+    elif self.len_B == 2:
+        self.len_B = len(tuple[0])
+
+    #Scale it and check to ensure no devision by 0
+    if np.max(dataA[~np.isinf(dataA)]) != 0:
+
+      dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
+
+    #Reset inf values
+    dataA[np.isinf(dataA)] = 0
+
+    return 1- dataA
+
 def RFGAP(prediction_type = None, y = None, prox_method = 'rfgap', matrix_type = 'sparse', triangular = True,
           non_zero_diagonal = True, **kwargs):
     """
