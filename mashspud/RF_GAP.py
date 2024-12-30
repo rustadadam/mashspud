@@ -40,7 +40,7 @@ def use_rf_similarities(self, tuple):
     rf_class.fit(tuple[0], y = tuple[1])
 
     #Get promities
-    dataA = rf_class.get_proximities()
+    similarities = rf_class.get_proximities()
 
     #Reset len_A and other varables
     if self.len_A == 2:
@@ -53,14 +53,14 @@ def use_rf_similarities(self, tuple):
         self.len_B = len(tuple[0])
 
     #Scale it and check to ensure no devision by 0
-    if np.max(dataA[~np.isinf(dataA)]) != 0:
+    if np.max(similarities[~np.isinf(similarities)]) != 0:
 
-      dataA = (dataA - dataA.min()) / (dataA[~np.isinf(dataA)].max() - dataA.min()) 
+      similarities = (similarities - similarities.min()) / (similarities[~np.isinf(similarities)].max() - similarities.min()) 
 
     #Reset inf values
-    dataA[np.isinf(dataA)] = 0
+    similarities[np.isinf(similarities)] = 0
 
-    return 1- dataA
+    return 1- similarities
 
 def RFGAP(prediction_type = None, y = None, prox_method = 'rfgap', matrix_type = 'sparse', triangular = True,
           non_zero_diagonal = True, **kwargs):
