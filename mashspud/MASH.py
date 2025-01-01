@@ -380,6 +380,9 @@ class MASH: #Manifold Alignment with Diffusion
         """
 
         try:
+            #Reduce memory requirements
+            matrix = matrix.astype(np.float32)
+
             # Ensure there are no zero values to avoid division by zero
             matrix = np.where(matrix == 0, 1e-10, matrix)
             matrix = matrix / matrix.sum(axis=1, keepdims=True)  # Normalize rows to probabilities
@@ -396,17 +399,17 @@ class MASH: #Manifold Alignment with Diffusion
                     comparison_chunk = matrix[j:j + chunk_size]
                     kl_divergence_chunk = np.sum(
                         chunk[:, np.newaxis, :] *
-                        np.log(chunk[:, np.newaxis, :] / comparison_chunk[np.newaxis, :, :]), 
+                        np.log1p(chunk[:, np.newaxis, :] / comparison_chunk[np.newaxis, :, :]), #We do np.log1p for numeric stability
                         axis=2
                     )
 
                     # Store results in the correct submatrix
                     divergence_matrix[i:i + chunk_size, j:j + chunk_size] = kl_divergence_chunk
 
-        except Exception as e:
+        except MemoryError as e:
             # Prevent infinite recursion
             if chunk_size < 25:
-                raise Exception("Memory Error. KL Divergence chunk size is less than 25 and memory is still exceeded.")
+                raise MemoryError("Memory Error. KL Divergence chunk size is less than 25 and memory is still exceeded.")
 
             print(f"Error: {e}\n\nRetrying with smaller chunk size.")
             return self.kl_divergence_matrix(matrix, int(chunk_size / 1.5))
@@ -462,10 +465,11 @@ class MASH: #Manifold Alignment with Diffusion
         #If the given chunk size proves to be too big, we can shrink it down
         try:
             # Ensure input is normalized to probability distributions
+            matrix = matrix.astype(np.float32)
             matrix = matrix / matrix.sum(axis=1, keepdims=True)
 
             n = matrix.shape[0]
-            distance_matrix = np.zeros((n, n), dtype=np.float64)  # Preallocate distance matrix
+            distance_matrix = np.zeros((n, n), dtype=np.float32)  # Preallocate distance matrix
 
             # Process rows in chunks
             for i in range(0, n, chunk_size):
@@ -490,10 +494,10 @@ class MASH: #Manifold Alignment with Diffusion
 
             return distance_matrix
         
-        except Exception as e:        
+        except MemoryError as e:        
             #To prevent endless loop
             if chunk_size < 25:
-                raise Exception("Memory Error. KL Divergence chunk size is less than 25 and memory is still exceeded.")
+                raise MemoryError("Memory Error. KL Divergence chunk size is less than 25 and memory is still exceeded.")
 
             print(f"Error: {e}\n\nReruning with smaller chunk size")
             return self.hellinger_distance_matrix_optimized(matrix, int(chunk_size/1.5))
