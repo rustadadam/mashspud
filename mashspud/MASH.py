@@ -622,7 +622,13 @@ class MASH: #Manifold Alignment with Diffusion
 
         #Find best T value if t is set to auto
         if self.t == -1 or type(self.t) != int:
-            self.t = find_optimal_t(matrix) 
+
+            try:
+                #Find the optimal t value
+                self.t = find_optimal_t(matrix) 
+            except Exception as e:
+                print("Error in finding optimal t value. Setting t to 10. Error: ", e)
+                self.t = 10
 
             #If we found a T
             if self.verbose > 1:
