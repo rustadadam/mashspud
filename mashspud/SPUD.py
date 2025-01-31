@@ -314,13 +314,13 @@ class SPUD:
       # Determine if the task is classification or regression
       if np.issubdtype(labels1.dtype, np.integer):
           # Classification
-          knn = KNeighborsClassifier(**knn_args)
+          knn = KNeighborsClassifier(random_state = self.kwargs["random_state"], **knn_args)
 
           if self.verbose > 2:
              print("Calculating the classification Score.")
       else:
           # Regression
-          knn = KNeighborsRegressor(weights = "distance", **knn_args)
+          knn = KNeighborsRegressor(weights = "distance", random_state = self.kwargs["random_state"], **knn_args)
 
           if self.verbose > 2:
              print("Calculating the R squared score.")
