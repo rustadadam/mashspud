@@ -140,6 +140,9 @@ def RFGAP(prediction_type = None, y = None, prox_method = 'rfgap', matrix_type =
         def __init__(self, prox_method = prox_method, matrix_type = matrix_type, triangular = triangular,
                      non_zero_diagonal = non_zero_diagonal, **kwargs):
 
+            if "random_state" not in kwargs:
+                kwargs["random_state"] = 42
+
             super(RFGAP, self).__init__(**kwargs)
 
             self.prox_method = prox_method
