@@ -422,7 +422,6 @@ class MASH: #Manifold Alignment with Diffusion
 
         return divergence_matrix
 
-
     def density_normalized_kernel(self, K):
         """
         Compute the density-normalized kernel matrix.
@@ -501,7 +500,6 @@ class MASH: #Manifold Alignment with Diffusion
 
             print(f"Error: {e}\n\nReruning with smaller chunk size")
             return self.hellinger_distance_matrix_optimized(matrix, int(chunk_size/1.5))
-
 
     def find_new_connections(self, pruned_connections = [], connection_limit = None, threshold = 0.2): 
         """
@@ -906,11 +904,8 @@ class MASH: #Manifold Alignment with Diffusion
         else:
             print("Please specify which features you want to predict. Graph 'A' or Graph 'B'")
             return None
-        
-        
-        predicted_features = (projection_matrix[:, :, np.newaxis] * known_features[np.newaxis, :, :]).sum(axis = 1)
-        
-        return predicted_features
+
+        return projection_matrix @ known_features
     
     def get_merged_data_set(self):
         """
