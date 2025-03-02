@@ -721,7 +721,6 @@ class SPUD:
         CE_score = None
         rf_oob = None
 
-
     #Calculate FOSCTTM score
     try:    
         FOSCTTM_score = self.FOSCTTM(self.block[self.len_A:, :self.len_A])

@@ -881,6 +881,7 @@ class MASH: #Manifold Alignment with Diffusion
 
     """                                      <><><><><><><><><><><><><><><><><><><><>     
                                                     PROJECTION FUNCTIONS BELOW
+                                             NOTE: These are still in experimentation
                                              <><><><><><><><><><><><><><><><><><><><>                                                    """
     def project_feature(self, predict_with = "A"):
         """
@@ -906,6 +907,18 @@ class MASH: #Manifold Alignment with Diffusion
             return None
 
         return projection_matrix @ known_features
+
+    def get_linear_transformation(self):
+        # Perform PCA on projectionBA
+        from sklearn.decomposition import PCA
+
+        pca = PCA(n_components=self.dataA.shape[1])
+        projectionBA_pca = pca.fit_transform(self.projectionAB.T).T
+
+        pca = PCA(n_components=self.dataB.shape[1])
+        projectionBA_pca = pca.fit_transform(projectionBA_pca)
+
+        return 2 * (projectionBA_pca - projectionBA_pca.min()) / (projectionBA_pca.max() - projectionBA_pca.min()) - 1
     
     def get_merged_data_set(self):
         """
